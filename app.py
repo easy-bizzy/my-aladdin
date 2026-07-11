@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 from datetime import datetime, timedelta
+import io
 
 st.set_page_config(
     page_title="Mini-Aladdin",
@@ -93,15 +94,23 @@ st.markdown("""
         color: white !important;
     }
     
-    .streak-fire {
-        font-size: 48px;
-        text-align: center;
-        animation: pulse 2s infinite;
+    .coupon-upcoming {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        padding: 15px;
+        border-radius: 10px;
+        color: white !important;
+        margin: 5px 0;
     }
     
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
+    .coupon-upcoming p, .coupon-upcoming h4 {
+        color: white !important;
+    }
+    
+    .coupon-past {
+        background: #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+        opacity: 0.6;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -152,6 +161,160 @@ def get_moex_prices(tickers):
     return prices
 
 
+def get_coupon_dates(ticker, coupon_rate, face_value=1000):
+    """
+    Рассчитывает даты купонов для ОФЗ.
+    ОФЗ обычно платят купоны каждые 6 месяцев (182 дня).
+    Возвращает список ближайших 4 дат купонов.
+    """
+    # Примерные даты выплат для каждой ОФЗ (на основе реального графика)
+    # Формат: (месяц_1, день_1, месяц_2, день_2)
+    coupon_schedule = {
+        'SU26238RMFS4': (4, 15, 10, 15),   # Апрель и Октябрь
+        'SU26246RMFS7': (3, 22, 9, 22),    # Март и Сентябрь
+        'SU26247RMFS5': (5, 18, 11, 18),   # Май и Ноябрь
+        'SU26248RMFS3': (2, 12, 8, 12),    # Февраль и Август
+        'SU26254RMFS1': (6, 25, 12, 25),   # Июнь и Декабрь
+    }
+    
+    if ticker not in coupon_schedule:
+        return []
+    
+    m1, d1, m2, d2 = coupon_schedule[ticker]
+    coupon_amount = face_value * coupon_rate / 2  # Полугодовой купон
+    
+    today = datetime.now()
+    coupons = []
+    
+    # Генерируем даты на 2 года вперед
+    for year_offset in range(2):
+        for month, day in [(m1, d1), (m2, d2)]:
+            coupon_date = datetime(today.year + year_offset, month, day)
+            if coupon_date >= today:
+                coupons.append({
+                    'date': coupon_date,
+                    'amount': coupon_amount,
+                    'ticker': ticker
+                })
+    
+    return sorted(coupons, key=lambda x: x['date'])[:4]
+
+
+def get_investor_level(total_value):
+    """Определяет уровень инвестора"""
+    if total_value >= 5_000_000:
+        return "🏆 Легенда", 5_000_000, "Достигнута цель!"
+    elif total_value >= 3_000_000:
+        return "💎 Мастер", 5_000_000, "До легенды осталось"
+    elif total_value >= 2_000_000:
+        return "🥇 Эксперт", 3_000_000, "До мастера осталось"
+    elif total_value >= 1_000_000:
+        return "🥈 Профи", 2_000_000, "До эксперта осталось"
+    elif total_value >= 500_000:
+        return "🥉 Опытный", 1_000_000, "До профи осталось"
+    else:
+        return " Новичок", 500_000, "До опытного осталось"
+
+
+def get_achievements(metrics):
+    """Возвращает список достижений"""
+    achievements = []
+    
+    achievements.append({
+        'name': 'Первые шаги',
+        'icon': '👶',
+        'description': 'Создать первый портфель',
+        'unlocked': True,
+        'condition': 'Всегда открыто'
+    })
+    
+    achievements.append({
+        'name': 'Сотня',
+        'icon': '💰',
+        'description': 'Накопить 100 000 ₽',
+        'unlocked': metrics['total_value'] >= 100_000,
+        'condition': f"{metrics['total_value']:,.0f} / 100 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Полмиллиона',
+        'icon': '💎',
+        'description': 'Накопить 500 000 ₽',
+        'unlocked': metrics['total_value'] >= 500_000,
+        'condition': f"{metrics['total_value']:,.0f} / 500 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Миллионер',
+        'icon': '🤑',
+        'description': 'Накопить 1 000 000 ₽',
+        'unlocked': metrics['total_value'] >= 1_000_000,
+        'condition': f"{metrics['total_value']:,.0f} / 1 000 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Диверсификация',
+        'icon': '',
+        'description': 'Иметь 5 разных облигаций',
+        'unlocked': len(st.session_state.positions) >= 5,
+        'condition': f"{len(st.session_state.positions)} / 5 облигаций"
+    })
+    
+    achievements.append({
+        'name': 'В плюсе',
+        'icon': '📈',
+        'description': 'Портфель в прибыли',
+        'unlocked': metrics['total_pnl'] > 0,
+        'condition': f"P&L: {metrics['total_pnl']:+,.0f} ₽"
+    })
+    
+    achievements.append({
+        'name': 'Рентьер',
+        'icon': '💵',
+        'description': 'Годовой купон > 100 000 ₽',
+        'unlocked': metrics['annual_coupon'] >= 100_000,
+        'condition': f"{metrics['annual_coupon']:,.0f} / 100 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Осторожный',
+        'icon': '🛡️',
+        'description': 'DV01 < 5000 ₽',
+        'unlocked': metrics['dv01'] < 5000,
+        'condition': f"DV01: {metrics['dv01']:,.0f} ₽"
+    })
+    
+    achievements.append({
+        'name': 'Цель достигнута!',
+        'icon': '🎯',
+        'description': 'Накопить 5 000 000 ₽',
+        'unlocked': metrics['total_value'] >= 5_000_000,
+        'condition': f"{metrics['total_value']:,.0f} / 5 000 000 ₽"
+    })
+    
+    return achievements
+
+
+def get_motivation_message(metrics):
+    """Возвращает мотивационное сообщение"""
+    pnl_pct = metrics['total_pnl_pct']
+    
+    if pnl_pct > 10:
+        return "🚀 Отличная работа! Ваш портфель показывает выдающиеся результаты!"
+    elif pnl_pct > 5:
+        return "📈 Превосходно! Вы на верном пути к финансовой свободе!"
+    elif pnl_pct > 0:
+        return "✅ Хороший результат! Продолжайте в том же духе!"
+    elif pnl_pct > -5:
+        return "💪 Небольшая просадка — это нормально. Долгосрочная стратегия важнее!"
+    elif pnl_pct > -10:
+        return "️ Рынок штормит, но вы держитесь. Диверсификация — ваш щит!"
+    else:
+        return " Время учиться! Изучите стресс-тесты и оптимизируйте портфель."
+
+
+# ==================== ИНИЦИАЛИЗАЦИЯ ====================
+
 if 'positions' not in st.session_state:
     st.session_state.positions = [
         {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
@@ -201,128 +364,6 @@ def calculate_metrics(positions):
 metrics = calculate_metrics(st.session_state.positions)
 
 
-# ==================== ГЕЙМИФИКАЦИЯ ====================
-
-def get_investor_level(total_value):
-    """Определяет уровень инвестора"""
-    if total_value >= 5_000_000:
-        return "🏆 Легенда", 5_000_000, "Достигнута цель!"
-    elif total_value >= 3_000_000:
-        return "💎 Мастер", 5_000_000, "До легенды осталось"
-    elif total_value >= 2_000_000:
-        return "🥇 Эксперт", 3_000_000, "До мастера осталось"
-    elif total_value >= 1_000_000:
-        return "🥈 Профи", 2_000_000, "До эксперта осталось"
-    elif total_value >= 500_000:
-        return "🥉 Опытный", 1_000_000, "До профи осталось"
-    else:
-        return "🌱 Новичок", 500_000, "До опытного осталось"
-
-def get_achievements(metrics):
-    """Возвращает список достижений"""
-    achievements = []
-    
-    # Первое достижение
-    achievements.append({
-        'name': 'Первые шаги',
-        'icon': '👶',
-        'description': 'Создать первый портфель',
-        'unlocked': True,
-        'condition': 'Всегда открыто'
-    })
-    
-    # 100к в портфеле
-    achievements.append({
-        'name': 'Сотня',
-        'icon': '💰',
-        'description': 'Накопить 100 000 ₽',
-        'unlocked': metrics['total_value'] >= 100_000,
-        'condition': f"{metrics['total_value']:,.0f} / 100 000 ₽"
-    })
-    
-    # 500к в портфеле
-    achievements.append({
-        'name': 'Полмиллиона',
-        'icon': '💎',
-        'description': 'Накопить 500 000 ₽',
-        'unlocked': metrics['total_value'] >= 500_000,
-        'condition': f"{metrics['total_value']:,.0f} / 500 000 ₽"
-    })
-    
-    # 1 млн
-    achievements.append({
-        'name': 'Миллионер',
-        'icon': '🤑',
-        'description': 'Накопить 1 000 000 ₽',
-        'unlocked': metrics['total_value'] >= 1_000_000,
-        'condition': f"{metrics['total_value']:,.0f} / 1 000 000 ₽"
-    })
-    
-    # 5 облигаций
-    achievements.append({
-        'name': 'Диверсификация',
-        'icon': '📊',
-        'description': 'Иметь 5 разных облигаций',
-        'unlocked': len(st.session_state.positions) >= 5,
-        'condition': f"{len(st.session_state.positions)} / 5 облигаций"
-    })
-    
-    # Положительный P&L
-    achievements.append({
-        'name': 'В плюсе',
-        'icon': '📈',
-        'description': 'Портфель в прибыли',
-        'unlocked': metrics['total_pnl'] > 0,
-        'condition': f"P&L: {metrics['total_pnl']:+,.0f} ₽"
-    })
-    
-    # Купонный доход > 100к
-    achievements.append({
-        'name': 'Рентьер',
-        'icon': '💵',
-        'description': 'Годовой купон > 100 000 ₽',
-        'unlocked': metrics['annual_coupon'] >= 100_000,
-        'condition': f"{metrics['annual_coupon']:,.0f} / 100 000 ₽"
-    })
-    
-    # Низкий DV01
-    achievements.append({
-        'name': 'Осторожный',
-        'icon': '🛡️',
-        'description': 'DV01 < 5000 ₽',
-        'unlocked': metrics['dv01'] < 5000,
-        'condition': f"DV01: {metrics['dv01']:,.0f} ₽"
-    })
-    
-    # Цель достигнута
-    achievements.append({
-        'name': 'Цель достигнута!',
-        'icon': '🎯',
-        'description': 'Накопить 5 000 000 ₽',
-        'unlocked': metrics['total_value'] >= 5_000_000,
-        'condition': f"{metrics['total_value']:,.0f} / 5 000 000 ₽"
-    })
-    
-    return achievements
-
-def get_motivation_message(metrics):
-    """Возвращает мотивационное сообщение"""
-    pnl_pct = metrics['total_pnl_pct']
-    
-    if pnl_pct > 10:
-        return "🚀 Отличная работа! Ваш портфель показывает выдающиеся результаты!"
-    elif pnl_pct > 5:
-        return "📈 Превосходно! Вы на верном пути к финансовой свободе!"
-    elif pnl_pct > 0:
-        return "✅ Хороший результат! Продолжайте в том же духе!"
-    elif pnl_pct > -5:
-        return "💪 Небольшая просадка — это нормально. Долгосрочная стратегия важнее!"
-    elif pnl_pct > -10:
-        return "🛡️ Рынок штормит, но вы держитесь. Диверсификация — ваш щит!"
-    else:
-        return "🎓 Время учиться! Изучите стресс-тесты и оптимизируйте портфель."
-
-
 # ==================== САЙДБАР ====================
 
 with st.sidebar:
@@ -331,7 +372,7 @@ with st.sidebar:
     
     page = st.radio(
         "Навигация",
-        ["Главная", "Позиции", "Стресс-тесты", "Прогноз цели", "🎮 Достижения"],
+        ["Главная", "Позиции", "Купонный календарь", "Стресс-тесты", "Прогноз цели", "Импорт из брокера", "🎮 Достижения"],
         index=0
     )
     
@@ -339,7 +380,6 @@ with st.sidebar:
     st.caption(f"Цены обновлены: {price_update_time.strftime('%H:%M:%S')}")
     st.caption(f"Источник: MOEX ISS API")
     
-    # Показываем уровень в сайдбаре
     level_name, next_level, _ = get_investor_level(metrics['total_value'])
     st.caption(f"Ваш уровень: {level_name}")
     
@@ -352,11 +392,9 @@ with st.sidebar:
 if page == "Главная":
     st.title("Обзор портфеля")
     
-    # Мотивационное сообщение
     motivation = get_motivation_message(metrics)
     st.info(motivation)
     
-    # Уровень инвестора
     level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
     col1, col2 = st.columns([2, 1])
     
@@ -481,53 +519,19 @@ elif page == "Позиции":
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            new_qty = st.number_input(
-                "Количество (шт)",
-                min_value=0,
-                value=int(pos['qty']),
-                step=1,
-                key=f"qty_{idx}"
-            )
-        
+            new_qty = st.number_input("Количество (шт)", min_value=0, value=int(pos['qty']), step=1, key=f"qty_{idx}")
         with col2:
-            new_ticker = st.text_input(
-                "Тикер",
-                value=pos['ticker'],
-                key=f"ticker_{idx}"
-            )
-        
+            new_ticker = st.text_input("Тикер", value=pos['ticker'], key=f"ticker_{idx}")
         with col3:
-            new_name = st.text_input(
-                "Название",
-                value=pos['short_name'],
-                key=f"name_{idx}"
-            )
+            new_name = st.text_input("Название", value=pos['short_name'], key=f"name_{idx}")
         
         col4, col5, col6 = st.columns(3)
-        
         with col4:
-            new_buy_price = st.number_input(
-                "Цена покупки (%)",
-                value=float(pos['buy_price']),
-                step=0.1,
-                key=f"buy_price_{idx}"
-            )
-        
+            new_buy_price = st.number_input("Цена покупки (%)", value=float(pos['buy_price']), step=0.1, key=f"buy_price_{idx}")
         with col5:
-            new_coupon = st.number_input(
-                "Купон (%)",
-                value=float(pos['coupon_rate'] * 100),
-                step=0.1,
-                key=f"coupon_{idx}"
-            )
-        
+            new_coupon = st.number_input("Купон (%)", value=float(pos['coupon_rate'] * 100), step=0.1, key=f"coupon_{idx}")
         with col6:
-            new_duration = st.number_input(
-                "Дюрация (лет)",
-                value=float(pos['duration']),
-                step=0.1,
-                key=f"duration_{idx}"
-            )
+            new_duration = st.number_input("Дюрация (лет)", value=float(pos['duration']), step=0.1, key=f"duration_{idx}")
         
         col_btn1, col_btn2 = st.columns(2)
         
@@ -583,6 +587,113 @@ elif page == "Позиции":
             st.rerun()
         else:
             st.error("Введите тикер и название!")
+
+
+# ==================== КУПОННЫЙ КАЛЕНДАРЬ ====================
+
+elif page == "Купонный календарь":
+    st.title("📅 Купонный календарь")
+    
+    st.markdown("---")
+    st.subheader("💰 Доход за год (прогноз)")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Годовой купон", f"{metrics['annual_coupon']:,.0f} ₽")
+    with col2:
+        st.metric("За 5 лет (прогноз)", f"{metrics['annual_coupon'] * 5:,.0f} ₽")
+    with col3:
+        st.metric("За 10 лет (прогноз)", f"{metrics['annual_coupon'] * 10:,.0f} ₽")
+    
+    st.markdown("---")
+    st.subheader("📆 Ближайшие выплаты купонов")
+    
+    # Собираем все купоны
+    all_coupons = []
+    for pos in st.session_state.positions:
+        coupons = get_coupon_dates(pos['ticker'], pos['coupon_rate'])
+        for c in coupons:
+            c['short_name'] = pos['short_name']
+            c['total_amount'] = c['amount'] * pos['qty']
+            all_coupons.append(c)
+    
+    # Сортируем по дате
+    all_coupons = sorted(all_coupons, key=lambda x: x['date'])
+    
+    # Разделяем на ближайшие и будущие
+    today = datetime.now()
+    upcoming = [c for c in all_coupons if c['date'] <= today + timedelta(days=90)]
+    future = [c for c in all_coupons if c['date'] > today + timedelta(days=90)]
+    
+    # Ближайшие купоны (90 дней)
+    st.markdown("### 🔥 Ближайшие 90 дней")
+    
+    if upcoming:
+        total_upcoming = sum(c['total_amount'] for c in upcoming)
+        st.success(f"**Итого к получению: {total_upcoming:,.0f} ₽**")
+        
+        for c in upcoming:
+            days_until = (c['date'] - today).days
+            st.markdown(f"""
+            <div class='coupon-upcoming'>
+                <h4>{c['short_name']} — {c['date'].strftime('%d.%m.%Y')}</h4>
+                <p>💵 Сумма: {c['total_amount']:,.0f} ₽ ({c['amount']:,.2f} ₽ × {st.session_state.positions[[p['ticker'] for p in st.session_state.positions].index(c['ticker'])]['qty']} шт)</p>
+                <p>⏰ Через {days_until} дн.</p>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Нет ближайших выплат в течение 90 дней")
+    
+    st.markdown("---")
+    
+    # Все будущие купоны
+    st.markdown("### 📊 Все будущие выплаты")
+    
+    coupon_df = pd.DataFrame([
+        {
+            'Дата': c['date'].strftime('%d.%m.%Y'),
+            'Облигация': c['short_name'],
+            'Купон на 1 шт': f"{c['amount']:,.2f} ₽",
+            'Количество': st.session_state.positions[[p['ticker'] for p in st.session_state.positions].index(c['ticker'])]['qty'],
+            'Итого': f"{c['total_amount']:,.0f} ₽"
+        }
+        for c in all_coupons
+    ])
+    
+    st.dataframe(coupon_df, use_container_width=True, hide_index=True)
+    
+    st.markdown("---")
+    
+    # График купонов по месяцам
+    st.subheader(" Купонный доход по месяцам (12 месяцев)")
+    
+    monthly_coupons = {}
+    for c in all_coupons:
+        if c['date'] <= today + timedelta(days=365):
+            month_key = c['date'].strftime('%Y-%m')
+            if month_key not in monthly_coupons:
+                monthly_coupons[month_key] = 0
+            monthly_coupons[month_key] += c['total_amount']
+    
+    if monthly_coupons:
+        months = sorted(monthly_coupons.keys())
+        values = [monthly_coupons[m] for m in months]
+        month_labels = [datetime.strptime(m, '%Y-%m').strftime('%b %Y') for m in months]
+        
+        fig = go.Figure(go.Bar(
+            x=month_labels,
+            y=values,
+            marker_color='rgb(46, 204, 113)',
+            text=[f"{v:,.0f} ₽" for v in values],
+            textposition='auto'
+        ))
+        fig.update_layout(
+            height=400,
+            template='plotly_white',
+            xaxis_title="Месяц",
+            yaxis_title="Сумма купонов (₽)"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 # ==================== СТРЕСС-ТЕСТЫ ====================
@@ -697,12 +808,129 @@ elif page == "Прогноз цели":
         st.success(f"**Лучший выбор:** {best['Облигация']} — {best['Лет до цели']:.1f} лет")
 
 
+# ==================== ИМПОРТ ИЗ БРОКЕРА ====================
+
+elif page == "Импорт из брокера":
+    st.title("📥 Импорт данных из брокера")
+    
+    st.markdown("""
+    ### Как загрузить отчет:
+    
+    1. Откройте приложение вашего брокера (Тинькофф, Сбер, ВТБ и т.д.)
+    2. Найдите раздел "Отчеты" или "История сделок"
+    3. Экспортируйте отчет в формате **CSV** или **Excel**
+    4. Загрузите файл ниже
+    
+    **Формат CSV должен содержать колонки:**
+    - Тикер (например, SU26238RMFS4)
+    - Дата покупки
+    - Количество
+    - Цена покупки (%)
+    """)
+    
+    st.markdown("---")
+    
+    # Загрузка файла
+    uploaded_file = st.file_uploader("Загрузить CSV файл", type=['csv', 'xlsx'])
+    
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df_import = pd.read_csv(uploaded_file, sep=';', encoding='utf-8')
+            else:
+                df_import = pd.read_excel(uploaded_file)
+            
+            st.success(f"✅ Файл загружен! Найдено {len(df_import)} записей")
+            
+            # Показываем превью
+            st.subheader("Превью данных")
+            st.dataframe(df_import.head(10), use_container_width=True)
+            
+            # Маппинг колонок
+            st.subheader("Сопоставление колонок")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                ticker_col = st.selectbox("Колонка с тикером", df_import.columns.tolist())
+            with col2:
+                date_col = st.selectbox("Колонка с датой", df_import.columns.tolist())
+            with col3:
+                qty_col = st.selectbox("Колонка с количеством", df_import.columns.tolist())
+            with col4:
+                price_col = st.selectbox("Колонка с ценой", df_import.columns.tolist())
+            
+            if st.button("Применить импорт"):
+                # Группируем по тикеру и считаем среднюю цену
+                grouped = df_import.groupby(ticker_col).agg({
+                    qty_col: 'sum',
+                    price_col: 'mean'
+                }).reset_index()
+                
+                # Обновляем позиции
+                for _, row in grouped.iterrows():
+                    ticker = row[ticker_col]
+                    qty = int(row[qty_col])
+                    price = float(row[price_col])
+                    
+                    # Ищем позицию
+                    found = False
+                    for pos in st.session_state.positions:
+                        if pos['ticker'] == ticker:
+                            pos['qty'] = qty
+                            pos['buy_price'] = price
+                            found = True
+                            break
+                    
+                    if not found:
+                        st.session_state.positions.append({
+                            'ticker': ticker,
+                            'short_name': ticker,
+                            'qty': qty,
+                            'buy_price': price,
+                            'coupon_rate': 0.10,
+                            'duration': 5.0,
+                            'current_price': price
+                        })
+                
+                st.success("✅ Данные импортированы!")
+                st.rerun()
+        
+        except Exception as e:
+            st.error(f"❌ Ошибка чтения файла: {e}")
+    
+    st.markdown("---")
+    
+    # Ручной ввод
+    st.subheader("Ручное обновление цен покупки")
+    
+    st.info("Если у вас нет CSV файла, можно вручную обновить цены покупки для каждой облигации:")
+    
+    for i, pos in enumerate(st.session_state.positions):
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.markdown(f"**{pos['short_name']}** ({pos['ticker']})")
+        
+        with col2:
+            new_price = st.number_input(
+                "Цена покупки %",
+                value=float(pos['buy_price']),
+                step=0.1,
+                key=f"manual_price_{i}"
+            )
+        
+        if st.button("Обновить", key=f"manual_update_{i}"):
+            st.session_state.positions[i]['buy_price'] = new_price
+            st.success(f"✅ Цена {pos['short_name']} обновлена!")
+            st.rerun()
+
+
 # ==================== ДОСТИЖЕНИЯ ====================
 
 elif page == "🎮 Достижения":
     st.title("🎮 Ваши достижения")
     
-    # Уровень инвестора
     level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
     
     st.markdown(f"## Ваш уровень: {level_name}")
@@ -719,7 +947,6 @@ elif page == "🎮 Достижения":
     
     st.markdown("---")
     
-    # Статистика
     st.subheader("📊 Статистика")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -740,8 +967,7 @@ elif page == "🎮 Достижения":
     
     st.markdown("---")
     
-    # Достижения
-    st.subheader(" Достижения")
+    st.subheader("🏆 Достижения")
     
     achievements = get_achievements(metrics)
     
@@ -768,7 +994,6 @@ elif page == "🎮 Достижения":
     
     st.markdown("---")
     
-    # Следующая цель
     st.subheader("🎯 Следующая цель")
     
     next_achievement = None
@@ -781,4 +1006,4 @@ elif page == "🎮 Достижения":
         st.info(f"**{next_achievement['icon']} {next_achievement['name']}** — {next_achievement['description']}")
         st.caption(f"Прогресс: {next_achievement['condition']}")
     else:
-        st.success(" Все достижения разблокированы! Вы настоящий мастер инвестиций!")
+        st.success("🎉 Все достижения разблокированы! Вы настоящий мастер инвестиций!")
