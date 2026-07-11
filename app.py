@@ -13,24 +13,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==================== CSS - ПРИНУДИТЕЛЬНЫЙ СВЕТЛЫЙ ФОН ====================
+# ==================== CSS - АДАПТИВНЫЙ ТЕКСТ ====================
 
 st.markdown("""
 <style>
-    /* Принудительно белый фон для ВСЕГО */
+    /* Принудительно СВЕТЛЫЙ фон для всего приложения */
     .main, .main *, body, html {
         background-color: #ffffff !important;
-        color: #000000 !important;
     }
     
-    /* Заголовки - черный текст */
-    h1, h2, h3, h4, h5, h6 {
-        color: #000000 !important;
-        font-weight: bold !important;
-    }
-    
-    /* Весь текст - черный */
-    p, span, div, label, li, td, th {
+    /* Весь текст - ЧЕРНЫЙ на белом фоне */
+    h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th {
         color: #000000 !important;
     }
     
@@ -51,7 +44,7 @@ st.markdown("""
         font-size: 14px !important;
     }
     
-    /* Сайдбар - темный фон, белый текст */
+    /* Сайдбар - темный фон, БЕЛЫЙ текст */
     section[data-testid="stSidebar"] { 
         background-color: #1e3a5f !important; 
     }
@@ -168,16 +161,38 @@ with st.sidebar:
     
     page = st.radio(
         "Навигация",
-        ["🏠 Главная", "📊 Позиции", "🔥 Стресс-тесты", "🎯 Прогноз цели"],
+        ["🏠 Главная", "📊 Позиции", " Стресс-тесты", " Прогноз цели"],
         index=0
     )
     
     st.markdown("---")
     st.caption(f"🔄 Обновлено: {datetime.now().strftime('%H:%M')}")
+    
+    # Кнопка обновления цен (опционально)
+    if st.button("🔄 Обновить цены с MOEX"):
+        try:
+            import requests
+            base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
+            for pos in st.session_state.positions:
+                try:
+                    url = f"{base_url}/{pos['ticker']}.json"
+                    response = requests.get(url, timeout=5)
+                    data = response.json()
+                    market_data = data.get('marketdata', {}).get('data', [])
+                    if market_data and len(market_data[0]) > 12:
+                        price = market_data[0][12]
+                        if price:
+                            pos['current_price'] = price
+                except:
+                    pass
+            st.success("✅ Цены обновлены!")
+            st.rerun()
+        except:
+            st.error("❌ Ошибка обновления цен")
 
 # ==================== ГЛАВНАЯ ====================
 
-if page == " Главная":
+if page == "🏠 Главная":
     st.title("💼 Обзор портфеля")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -187,10 +202,10 @@ if page == " Главная":
                  f"{metrics['total_pnl']:+,.0f} ₽")
     
     with col2:
-        st.metric(" Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
+        st.metric("📈 Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     
     with col3:
-        st.metric("⏱️ Дюрация", f"{metrics['weighted_duration']:.2f} лет", "средневзвеш.")
+        st.metric("️ Дюрация", f"{metrics['weighted_duration']:.2f} лет", "средневзвеш.")
     
     with col4:
         st.metric("🎯 DV01", f"{metrics['dv01']:,.0f} ₽", "риск на 0.01%")
@@ -200,14 +215,14 @@ if page == " Главная":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Распределение портфеля")
+        st.subheader(" Распределение портфеля")
         try:
             fig_pie = px.pie(metrics['details'], values='market_value', 
                             names='short_name', hole=0.4)
-            fig_pie.update_layout(height=400)
+            fig_pie.update_layout(height=400, template='plotly_white')
             st.plotly_chart(fig_pie, use_container_width=True)
         except Exception as e:
-            st.error(f"Ошибка графика: {e}")
+            st.info("📊 График распределения временно недоступен")
     
     with col2:
         st.subheader("💹 P&L по позициям")
@@ -219,10 +234,10 @@ if page == " Главная":
                 y=metrics['details']['pnl'],
                 marker_color=colors
             ))
-            fig_bar.update_layout(height=400, showlegend=False)
+            fig_bar.update_layout(height=400, showlegend=False, template='plotly_white')
             st.plotly_chart(fig_bar, use_container_width=True)
         except Exception as e:
-            st.error(f"Ошибка графика: {e}")
+            st.info(" График P&L временно недоступен")
     
     st.markdown("---")
     st.subheader("🎯 Прогресс к цели 5 000 000 ₽")
@@ -237,16 +252,15 @@ if page == " Главная":
     with col2:
         st.metric("💵 Купон в месяц", f"{metrics['annual_coupon']/12:,.0f} ₽")
     with col3:
-        st.metric("💵 Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
+        st.metric(" Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
 
-# ==================== ПОЗИЦИИ С УПРАВЛЕНИЕМ ====================
+# ==================== ПОЗИЦИИ ====================
 
 elif page == "📊 Позиции":
     st.title("💼 Управление позициями")
     
     st.subheader("📋 Текущие позиции")
     
-    # Таблица позиций
     df_display = metrics['details'][['short_name', 'qty', 'buy_price', 
                                      'current_price', 'market_value', 'pnl', 'pnl_pct']].copy()
     df_display.columns = ['Облигация', 'Кол-во', 'Покупка %', 'Сейчас %', 
@@ -255,11 +269,7 @@ elif page == "📊 Позиции":
     
     st.markdown("---")
     
-    # УПРАВЛЕНИЕ ПОЗИЦИЯМИ
     st.subheader("⚙️ Управление позициями")
-    
-    # Выбор позиции для редактирования
-    st.markdown("**Выберите позицию для редактирования:**")
     
     position_options = [f"{pos['short_name']} ({pos['qty']} шт)" 
                         for pos in st.session_state.positions]
@@ -325,10 +335,10 @@ elif page == "📊 Позиции":
                 key=f"duration_{idx}"
             )
         
-        col_btn1, col_btn2, col_btn3 = st.columns(3)
+        col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
-            if st.button(" Сохранить изменения", key=f"save_{idx}"):
+            if st.button("💾 Сохранить изменения", key=f"save_{idx}"):
                 st.session_state.positions[idx] = {
                     'ticker': new_ticker,
                     'short_name': new_name,
@@ -349,19 +359,18 @@ elif page == "📊 Позиции":
     
     st.markdown("---")
     
-    # ДОБАВЛЕНИЕ НОВОЙ ПОЗИЦИИ
     st.subheader("➕ Добавить новую позицию")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        add_ticker = st.text_input("Тикер (например, SU26230RMFS5)", "", key="add_ticker")
-        add_name = st.text_input("Название (например, ОФЗ 26230)", "", key="add_name")
-        add_qty = st.number_input("Количество (шт)", min_value=1, value=10, key="add_qty")
+        add_ticker = st.text_input("Тикер", "", key="add_ticker")
+        add_name = st.text_input("Название", "", key="add_name")
+        add_qty = st.number_input("Количество", min_value=1, value=10, key="add_qty")
     
     with col2:
         add_buy_price = st.number_input("Цена покупки (%)", value=90.0, step=0.1, key="add_buy_price")
-        add_coupon = st.number_input("Купонная ставка (%)", value=10.0, step=0.1, key="add_coupon")
+        add_coupon = st.number_input("Купон (%)", value=10.0, step=0.1, key="add_coupon")
         add_duration = st.number_input("Дюрация (лет)", value=5.0, step=0.1, key="add_duration")
     
     with col3:
@@ -377,24 +386,21 @@ elif page == "📊 Позиции":
                     'duration': float(add_duration),
                     'current_price': float(add_buy_price)
                 })
-                st.success(f"✅ Добавлена позиция: {add_name}")
+                st.success(f"✅ Добавлена: {add_name}")
                 st.rerun()
             else:
                 st.error("❌ Введите тикер и название!")
 
 # ==================== СТРЕСС-ТЕСТЫ ====================
 
-elif page == "🔥 Стресс-тесты":
+elif page == " Стресс-тесты":
     st.title("🔥 Стресс-тестирование")
-    st.caption("Моделируйте реакцию портфеля на изменения рынка")
     
     col1, col2 = st.columns(2)
     with col1:
-        rate_shock = st.slider("📈 Изменение ключевой ставки (%)", 
-                              -5.0, 10.0, 0.0, 0.1)
+        rate_shock = st.slider("📈 Изменение ставки (%)", -5.0, 10.0, 0.0, 0.1)
     with col2:
-        fx_shock = st.slider("💱 Ослабление рубля (%)", 
-                            0.0, 50.0, 0.0, 1.0)
+        fx_shock = st.slider("💱 Ослабление рубля (%)", 0.0, 50.0, 0.0, 1.0)
     
     duration = metrics['weighted_duration']
     current_value = metrics['total_value']
@@ -409,22 +415,22 @@ elif page == "🔥 Стресс-тесты":
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("💰 Текущая стоимость", f"{current_value:,.0f} ₽")
+        st.metric("💰 Текущая", f"{current_value:,.0f} ₽")
     with col2:
-        st.metric("📊 Изменение", f"{value_change:+,.0f} ₽", f"{change_pct:+.2f}%")
+        st.metric(" Изменение", f"{value_change:+,.0f} ₽", f"{change_pct:+.2f}%")
     with col3:
-        st.metric("📉 Новая стоимость", f"{new_value:,.0f} ₽")
+        st.metric("📉 Новая", f"{new_value:,.0f} ₽")
     
     st.markdown("---")
-    st.subheader(" Готовые сценарии")
+    st.subheader("📋 Сценарии")
     
     scenarios = [
-        ("🟢 Сильное снижение ставки", -3.0, 0),
+        ("🟢 Сильное снижение", -3.0, 0),
         ("🟢 Умеренное снижение", -1.5, 0),
-        (" Ставка без изменений", 0, 0),
+        ("⚪ Без изменений", 0, 0),
         ("🟡 Небольшой рост", 1.0, 0),
         ("🟠 Значительный рост", 2.0, 0),
-        ("🔴 Кризис", 5.0, 20),
+        (" Кризис", 5.0, 20),
     ]
     
     scenario_data = []
@@ -435,22 +441,19 @@ elif page == "🔥 Стресс-тесты":
         scenario_data.append({
             'Сценарий': name,
             'Шок ставки': f"{rate:+.1f}%",
-            'Шок валюты': f"{fx:.0f}%",
             'Изменение ₽': f"{change:+,.0f}",
             'Новая стоимость ₽': f"{current_value + change:,.0f}"
         })
     
-    st.dataframe(pd.DataFrame(scenario_data), 
-                use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(scenario_data), use_container_width=True, hide_index=True)
 
 # ==================== ПРОГНОЗ ЦЕЛИ ====================
 
 elif page == "🎯 Прогноз цели":
-    st.title(" Прогноз достижения цели")
+    st.title("🎯 Прогноз достижения цели")
     
     target = st.number_input("Цель (₽)", value=5_000_000, step=100_000)
-    monthly = st.number_input("Ежемесячные вложения (₽)", 
-                             value=100_000, step=10_000)
+    monthly = st.number_input("Ежемесячные вложения (₽)", value=100_000, step=10_000)
     
     forecasts = []
     for pos in st.session_state.positions:
@@ -477,7 +480,7 @@ elif page == "🎯 Прогноз цели":
     df_forecast = pd.DataFrame(forecasts).sort_values('Лет до цели')
     
     st.markdown("---")
-    st.subheader("⏱️ Время достижения цели по каждой облигации")
+    st.subheader("⏱️ Время достижения цели")
     
     try:
         fig = go.Figure(go.Bar(
@@ -487,14 +490,13 @@ elif page == "🎯 Прогноз цели":
             text=df_forecast['Лет до цели'].apply(lambda x: f"{x:.1f} лет"),
             textposition='auto'
         ))
-        fig.update_layout(height=400, template='plotly_white', 
-                         yaxis_title="Лет")
+        fig.update_layout(height=400, template='plotly_white', yaxis_title="Лет")
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        st.error(f"Ошибка графика: {e}")
+        st.info("📊 График временно недоступен")
     
     st.dataframe(df_forecast, use_container_width=True, hide_index=True)
     
     if len(df_forecast) > 0:
         best = df_forecast.iloc[0]
-        st.success(f"🏆 **Лучший выбор:** {best['Облигация']} — достигнете цели за {best['Лет до цели']:.1f} лет")
+        st.success(f"🏆 **Лучший выбор:** {best['Облигация']} — {best['Лет до цели']:.1f} лет")
