@@ -9,7 +9,7 @@ import io
 
 st.set_page_config(
     page_title="Mini-Aladdin",
-    page_icon="📊",
+    page_icon="",
     layout="wide"
 )
 
@@ -67,6 +67,114 @@ st.markdown("""
         h1 { font-size: 22px !important; }
     }
     
+    /* УРОВНИ */
+    .level-badge-epic {
+        background: linear-gradient(135deg, #00c853 0%, #69f0ae 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: white !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
+    }
+    
+    .level-badge-legend {
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffa000 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: #333 !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+    }
+    
+    .level-badge-mythic {
+        background: linear-gradient(135deg, #9c27b0 0%, #e040fb 50%, #7c4dff 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: white !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(156, 39, 176, 0.5);
+    }
+    
+    .level-badge-mythic-honor {
+        background: linear-gradient(135deg, #d32f2f 0%, #9c27b0 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: white !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(211, 47, 47, 0.5);
+    }
+    
+    .level-badge-mythic-glory {
+        background: linear-gradient(135deg, #ff6f00 0%, #ffd700 50%, #ff6f00 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: #333 !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(255, 111, 0, 0.6);
+    }
+    
+    .level-badge-mythic-legion {
+        background: linear-gradient(135deg, #ff1744 0%, #d500f9 33%, #2979ff 66%, #00e676 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: white !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 20px rgba(213, 0, 249, 0.6);
+    }
+    
+    .level-badge-mythic-immortal {
+        background: linear-gradient(135deg, #000000 0%, #1a237e 25%, #4a148c 50%, #880e4f 75%, #ffd700 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 22px;
+        font-weight: bold;
+        color: #ffd700 !important;
+        margin: 10px 0;
+        box-shadow: 0 4px 25px rgba(255, 215, 0, 0.7);
+        animation: cosmicPulse 3s infinite;
+    }
+    
+    @keyframes cosmicPulse {
+        0%, 100% { box-shadow: 0 4px 25px rgba(255, 215, 0, 0.7); }
+        50% { box-shadow: 0 4px 35px rgba(255, 215, 0, 1); }
+    }
+    
+    /* ЗВЕЗДЫ */
+    .stars-display {
+        background: linear-gradient(135deg, #fff9c4 0%, #fff176 100%);
+        padding: 15px 25px;
+        border-radius: 15px;
+        display: inline-block;
+        font-size: 20px;
+        font-weight: bold;
+        color: #333 !important;
+        margin: 10px 0;
+        border: 2px solid #ffd700;
+    }
+    
+    .stars-display p, .stars-display span {
+        color: #333 !important;
+    }
+    
     .achievement-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 20px;
@@ -76,21 +184,6 @@ st.markdown("""
     }
     
     .achievement-card p, .achievement-card h3, .achievement-card span {
-        color: white !important;
-    }
-    
-    .level-badge {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        padding: 15px 30px;
-        border-radius: 50px;
-        display: inline-block;
-        font-size: 24px;
-        font-weight: bold;
-        color: white !important;
-        margin: 20px 0;
-    }
-    
-    .level-badge p, .level-badge span {
         color: white !important;
     }
     
@@ -104,13 +197,6 @@ st.markdown("""
     
     .coupon-upcoming p, .coupon-upcoming h4 {
         color: white !important;
-    }
-    
-    .coupon-past {
-        background: #e0e0e0;
-        padding: 15px;
-        border-radius: 10px;
-        opacity: 0.6;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -162,31 +248,24 @@ def get_moex_prices(tickers):
 
 
 def get_coupon_dates(ticker, coupon_rate, face_value=1000):
-    """
-    Рассчитывает даты купонов для ОФЗ.
-    ОФЗ обычно платят купоны каждые 6 месяцев (182 дня).
-    Возвращает список ближайших 4 дат купонов.
-    """
-    # Примерные даты выплат для каждой ОФЗ (на основе реального графика)
-    # Формат: (месяц_1, день_1, месяц_2, день_2)
+    """Рассчитывает даты купонов для ОФЗ"""
     coupon_schedule = {
-        'SU26238RMFS4': (4, 15, 10, 15),   # Апрель и Октябрь
-        'SU26246RMFS7': (3, 22, 9, 22),    # Март и Сентябрь
-        'SU26247RMFS5': (5, 18, 11, 18),   # Май и Ноябрь
-        'SU26248RMFS3': (2, 12, 8, 12),    # Февраль и Август
-        'SU26254RMFS1': (6, 25, 12, 25),   # Июнь и Декабрь
+        'SU26238RMFS4': (4, 15, 10, 15),
+        'SU26246RMFS7': (3, 22, 9, 22),
+        'SU26247RMFS5': (5, 18, 11, 18),
+        'SU26248RMFS3': (2, 12, 8, 12),
+        'SU26254RMFS1': (6, 25, 12, 25),
     }
     
     if ticker not in coupon_schedule:
         return []
     
     m1, d1, m2, d2 = coupon_schedule[ticker]
-    coupon_amount = face_value * coupon_rate / 2  # Полугодовой купон
+    coupon_amount = face_value * coupon_rate / 2
     
     today = datetime.now()
     coupons = []
     
-    # Генерируем даты на 2 года вперед
     for year_offset in range(2):
         for month, day in [(m1, d1), (m2, d2)]:
             coupon_date = datetime(today.year + year_offset, month, day)
@@ -200,20 +279,67 @@ def get_coupon_dates(ticker, coupon_rate, face_value=1000):
     return sorted(coupons, key=lambda x: x['date'])[:4]
 
 
+# ==================== НОВАЯ СИСТЕМА УРОВНЕЙ ====================
+
 def get_investor_level(total_value):
-    """Определяет уровень инвестора"""
-    if total_value >= 5_000_000:
-        return "🏆 Легенда", 5_000_000, "Достигнута цель!"
-    elif total_value >= 3_000_000:
-        return "💎 Мастер", 5_000_000, "До легенды осталось"
-    elif total_value >= 2_000_000:
-        return "🥇 Эксперт", 3_000_000, "До мастера осталось"
-    elif total_value >= 1_000_000:
-        return "🥈 Профи", 2_000_000, "До эксперта осталось"
-    elif total_value >= 500_000:
-        return "🥉 Опытный", 1_000_000, "До профи осталось"
+    """
+    Определяет уровень инвестора.
+    Возвращает: (название, класс CSS, следующая цель, сообщение)
+    """
+    levels = [
+        (500_000, "🌱 Новичок", "level-badge-epic", 750_000, "До Эпика осталось"),
+        (750_000, "🟢 Эпик", "level-badge-epic", 1_000_000, "До Легенды осталось"),
+        (1_000_000, " Легенда", "level-badge-legend", 2_500_000, "До Мифического уровня осталось"),
+        (2_500_000, " Мифический уровень", "level-badge-mythic", 5_000_000, "До Мифической чести осталось"),
+        (5_000_000, "🏆 Мифическая честь", "level-badge-mythic-honor", 7_500_000, "До Мифической славы осталось"),
+        (7_500_000, " Мифическая слава", "level-badge-mythic-glory", 10_000_000, "До Мифического легиона осталось"),
+        (10_000_000, "⚔️ Мифический легион", "level-badge-mythic-legion", 10_000_000, "До Мифического бессмертного осталось"),
+    ]
+    
+    # Определяем текущий уровень
+    current_level = levels[0]
+    for threshold, name, css_class, next_goal, msg in levels:
+        if total_value >= threshold:
+            current_level = (threshold, name, css_class, next_goal, msg)
+    
+    # Если достигли 10 млн — особый уровень
+    if total_value >= 10_000_000:
+        return "🌟 Мифический бессмертный", "level-badge-mythic-immortal", 10_000_000, "Максимальный уровень достигнут!"
+    
+    return current_level[1], current_level[2], current_level[3], current_level[4]
+
+
+def get_star_level(annual_coupon):
+    """
+    Определяет звездный уровень по годовому купонному доходу.
+    Возвращает: (количество звезд, иконка)
+    """
+    if annual_coupon >= 1_000_000:
+        return 100, "⭐"
+    elif annual_coupon >= 500_000:
+        return 50, "⭐"
+    elif annual_coupon >= 250_000:
+        return 25, "⭐"
     else:
-        return " Новичок", 500_000, "До опытного осталось"
+        return 0, "⭐"
+
+
+def get_motivation_message(metrics):
+    """Возвращает мотивационное сообщение"""
+    pnl_pct = metrics['total_pnl_pct']
+    
+    if pnl_pct > 10:
+        return "🚀 Отличная работа! Ваш портфель показывает выдающиеся результаты!"
+    elif pnl_pct > 5:
+        return "📈 Превосходно! Вы на верном пути к финансовой свободе!"
+    elif pnl_pct > 0:
+        return "✅ Хороший результат! Продолжайте в том же духе!"
+    elif pnl_pct > -5:
+        return "💪 Небольшая просадка — это нормально. Долгосрочная стратегия важнее!"
+    elif pnl_pct > -10:
+        return "🛡️ Рынок штормит, но вы держитесь. Диверсификация — ваш щит!"
+    else:
+        return "🎓 Время учиться! Изучите стресс-тесты и оптимизируйте портфель."
 
 
 def get_achievements(metrics):
@@ -254,7 +380,7 @@ def get_achievements(metrics):
     
     achievements.append({
         'name': 'Диверсификация',
-        'icon': '',
+        'icon': '📊',
         'description': 'Иметь 5 разных облигаций',
         'unlocked': len(st.session_state.positions) >= 5,
         'condition': f"{len(st.session_state.positions)} / 5 облигаций"
@@ -269,48 +395,46 @@ def get_achievements(metrics):
     })
     
     achievements.append({
-        'name': 'Рентьер',
-        'icon': '💵',
-        'description': 'Годовой купон > 100 000 ₽',
-        'unlocked': metrics['annual_coupon'] >= 100_000,
-        'condition': f"{metrics['annual_coupon']:,.0f} / 100 000 ₽"
+        'name': '25 звезд',
+        'icon': '⭐',
+        'description': 'Годовой купон 250 000 ₽',
+        'unlocked': metrics['annual_coupon'] >= 250_000,
+        'condition': f"{metrics['annual_coupon']:,.0f} / 250 000 ₽"
     })
     
     achievements.append({
-        'name': 'Осторожный',
-        'icon': '🛡️',
-        'description': 'DV01 < 5000 ₽',
-        'unlocked': metrics['dv01'] < 5000,
-        'condition': f"DV01: {metrics['dv01']:,.0f} ₽"
+        'name': '50 звезд',
+        'icon': '⭐',
+        'description': 'Годовой купон 500 000 ₽',
+        'unlocked': metrics['annual_coupon'] >= 500_000,
+        'condition': f"{metrics['annual_coupon']:,.0f} / 500 000 ₽"
     })
     
     achievements.append({
-        'name': 'Цель достигнута!',
-        'icon': '🎯',
-        'description': 'Накопить 5 000 000 ₽',
-        'unlocked': metrics['total_value'] >= 5_000_000,
-        'condition': f"{metrics['total_value']:,.0f} / 5 000 000 ₽"
+        'name': '100 звезд',
+        'icon': '⭐',
+        'description': 'Годовой купон 1 000 000 ₽',
+        'unlocked': metrics['annual_coupon'] >= 1_000_000,
+        'condition': f"{metrics['annual_coupon']:,.0f} / 1 000 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Мифический легион',
+        'icon': '⚔️',
+        'description': 'Накопить 7 500 000 ₽',
+        'unlocked': metrics['total_value'] >= 7_500_000,
+        'condition': f"{metrics['total_value']:,.0f} / 7 500 000 ₽"
+    })
+    
+    achievements.append({
+        'name': 'Мифический бессмертный',
+        'icon': '🌟',
+        'description': 'Накопить 10 000 000 ₽',
+        'unlocked': metrics['total_value'] >= 10_000_000,
+        'condition': f"{metrics['total_value']:,.0f} / 10 000 000 ₽"
     })
     
     return achievements
-
-
-def get_motivation_message(metrics):
-    """Возвращает мотивационное сообщение"""
-    pnl_pct = metrics['total_pnl_pct']
-    
-    if pnl_pct > 10:
-        return "🚀 Отличная работа! Ваш портфель показывает выдающиеся результаты!"
-    elif pnl_pct > 5:
-        return "📈 Превосходно! Вы на верном пути к финансовой свободе!"
-    elif pnl_pct > 0:
-        return "✅ Хороший результат! Продолжайте в том же духе!"
-    elif pnl_pct > -5:
-        return "💪 Небольшая просадка — это нормально. Долгосрочная стратегия важнее!"
-    elif pnl_pct > -10:
-        return "️ Рынок штормит, но вы держитесь. Диверсификация — ваш щит!"
-    else:
-        return " Время учиться! Изучите стресс-тесты и оптимизируйте портфель."
 
 
 # ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -380,8 +504,14 @@ with st.sidebar:
     st.caption(f"Цены обновлены: {price_update_time.strftime('%H:%M:%S')}")
     st.caption(f"Источник: MOEX ISS API")
     
-    level_name, next_level, _ = get_investor_level(metrics['total_value'])
-    st.caption(f"Ваш уровень: {level_name}")
+    # Показываем уровень в сайдбаре
+    level_name, level_css, next_level, _ = get_investor_level(metrics['total_value'])
+    st.caption(f"Уровень: {level_name}")
+    
+    # Показываем звезды
+    stars_count, star_icon = get_star_level(metrics['annual_coupon'])
+    if stars_count > 0:
+        st.caption(f"Звезды: {star_icon} {stars_count}")
     
     if st.button("Обновить цены"):
         st.rerun()
@@ -395,17 +525,31 @@ if page == "Главная":
     motivation = get_motivation_message(metrics)
     st.info(motivation)
     
-    level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
-    col1, col2 = st.columns([2, 1])
+    # Уровень и звезды
+    level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
+    stars_count, star_icon = get_star_level(metrics['annual_coupon'])
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
         st.markdown(f"### Ваш уровень: {level_name}")
-        progress_to_next = min(metrics['total_value'] / next_level, 1.0)
-        st.progress(progress_to_next)
-        st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+        if metrics['total_value'] < 10_000_000:
+            progress_to_next = min(metrics['total_value'] / next_level, 1.0)
+            st.progress(progress_to_next)
+            st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+        else:
+            st.caption(" Максимальный уровень достигнут!")
     
     with col2:
-        st.markdown(f"<div class='level-badge'>{level_name}</div>", unsafe_allow_html=True)
+        st.markdown(f'<div class="{level_css}">{level_name}</div>', unsafe_allow_html=True)
+    
+    with col3:
+        if stars_count > 0:
+            stars_text = f"{star_icon} {stars_count} звезд"
+            st.markdown(f'<div class="stars-display">{stars_text}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="stars-display">⭐ 0 звезд</div>', unsafe_allow_html=True)
+            st.caption("До 25 звезд: 250 000 ₽ купона")
     
     st.markdown("---")
     
@@ -471,8 +615,8 @@ if page == "Главная":
             st.info("График временно недоступен")
     
     st.markdown("---")
-    st.subheader("Прогресс к цели 5 000 000 ₽")
-    progress = min(metrics['total_value'] / 5_000_000, 1.0)
+    st.subheader("Прогресс к цели 10 000 000 ₽")
+    progress = min(metrics['total_value'] / 10_000_000, 1.0)
     st.progress(progress)
     st.caption(f"Достигнуто: {metrics['total_value']:,.0f} ₽ ({progress*100:.1f}%)")
     
@@ -595,20 +739,21 @@ elif page == "Купонный календарь":
     st.title("📅 Купонный календарь")
     
     st.markdown("---")
-    st.subheader("💰 Доход за год (прогноз)")
+    st.subheader("💰 Доход за период (прогноз)")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Годовой купон", f"{metrics['annual_coupon']:,.0f} ₽")
     with col2:
-        st.metric("За 5 лет (прогноз)", f"{metrics['annual_coupon'] * 5:,.0f} ₽")
+        st.metric("За 5 лет", f"{metrics['annual_coupon'] * 5:,.0f} ₽")
     with col3:
-        st.metric("За 10 лет (прогноз)", f"{metrics['annual_coupon'] * 10:,.0f} ₽")
+        st.metric("За 10 лет", f"{metrics['annual_coupon'] * 10:,.0f} ₽")
+    with col4:
+        st.metric("За 20 лет", f"{metrics['annual_coupon'] * 20:,.0f} ₽")
     
     st.markdown("---")
     st.subheader("📆 Ближайшие выплаты купонов")
     
-    # Собираем все купоны
     all_coupons = []
     for pos in st.session_state.positions:
         coupons = get_coupon_dates(pos['ticker'], pos['coupon_rate'])
@@ -617,15 +762,11 @@ elif page == "Купонный календарь":
             c['total_amount'] = c['amount'] * pos['qty']
             all_coupons.append(c)
     
-    # Сортируем по дате
     all_coupons = sorted(all_coupons, key=lambda x: x['date'])
     
-    # Разделяем на ближайшие и будущие
     today = datetime.now()
     upcoming = [c for c in all_coupons if c['date'] <= today + timedelta(days=90)]
-    future = [c for c in all_coupons if c['date'] > today + timedelta(days=90)]
     
-    # Ближайшие купоны (90 дней)
     st.markdown("### 🔥 Ближайшие 90 дней")
     
     if upcoming:
@@ -634,10 +775,11 @@ elif page == "Купонный календарь":
         
         for c in upcoming:
             days_until = (c['date'] - today).days
+            pos_qty = next((p['qty'] for p in st.session_state.positions if p['ticker'] == c['ticker']), 0)
             st.markdown(f"""
             <div class='coupon-upcoming'>
                 <h4>{c['short_name']} — {c['date'].strftime('%d.%m.%Y')}</h4>
-                <p>💵 Сумма: {c['total_amount']:,.0f} ₽ ({c['amount']:,.2f} ₽ × {st.session_state.positions[[p['ticker'] for p in st.session_state.positions].index(c['ticker'])]['qty']} шт)</p>
+                <p>💵 Сумма: {c['total_amount']:,.0f} ₽ ({c['amount']:,.2f} ₽ × {pos_qty} шт)</p>
                 <p>⏰ Через {days_until} дн.</p>
             </div>
             """, unsafe_allow_html=True)
@@ -646,7 +788,6 @@ elif page == "Купонный календарь":
     
     st.markdown("---")
     
-    # Все будущие купоны
     st.markdown("### 📊 Все будущие выплаты")
     
     coupon_df = pd.DataFrame([
@@ -654,7 +795,7 @@ elif page == "Купонный календарь":
             'Дата': c['date'].strftime('%d.%m.%Y'),
             'Облигация': c['short_name'],
             'Купон на 1 шт': f"{c['amount']:,.2f} ₽",
-            'Количество': st.session_state.positions[[p['ticker'] for p in st.session_state.positions].index(c['ticker'])]['qty'],
+            'Количество': next((p['qty'] for p in st.session_state.positions if p['ticker'] == c['ticker']), 0),
             'Итого': f"{c['total_amount']:,.0f} ₽"
         }
         for c in all_coupons
@@ -664,8 +805,7 @@ elif page == "Купонный календарь":
     
     st.markdown("---")
     
-    # График купонов по месяцам
-    st.subheader(" Купонный доход по месяцам (12 месяцев)")
+    st.subheader("📈 Купонный доход по месяцам (12 месяцев)")
     
     monthly_coupons = {}
     for c in all_coupons:
@@ -758,7 +898,7 @@ elif page == "Стресс-тесты":
 elif page == "Прогноз цели":
     st.title("Прогноз достижения цели")
     
-    target = st.number_input("Цель (₽)", value=5_000_000, step=100_000)
+    target = st.number_input("Цель (₽)", value=10_000_000, step=100_000)
     monthly = st.number_input("Ежемесячные вложения (₽)", value=100_000, step=10_000)
     
     forecasts = []
@@ -814,110 +954,133 @@ elif page == "Импорт из брокера":
     st.title("📥 Импорт данных из брокера")
     
     st.markdown("""
-    ### Как загрузить отчет:
-    
-    1. Откройте приложение вашего брокера (Тинькофф, Сбер, ВТБ и т.д.)
-    2. Найдите раздел "Отчеты" или "История сделок"
-    3. Экспортируйте отчет в формате **CSV** или **Excel**
-    4. Загрузите файл ниже
-    
-    **Формат CSV должен содержать колонки:**
-    - Тикер (например, SU26238RMFS4)
-    - Дата покупки
-    - Количество
-    - Цена покупки (%)
+    ### Поддерживаемые форматы:
+    - **HTML** — отчеты Тинькофф, Сбер, ВТБ
+    - **CSV** — универсальный формат
+    - **Excel (XLSX)** — если экспортировали из Excel
     """)
     
     st.markdown("---")
     
-    # Загрузка файла
-    uploaded_file = st.file_uploader("Загрузить CSV файл", type=['csv', 'xlsx'])
+    uploaded_file = st.file_uploader("Загрузить файл отчета", type=['html', 'htm', 'csv', 'xlsx', 'xls'])
     
     if uploaded_file is not None:
         try:
-            if uploaded_file.name.endswith('.csv'):
-                df_import = pd.read_csv(uploaded_file, sep=';', encoding='utf-8')
-            else:
+            df_import = None
+            
+            if uploaded_file.name.endswith(('.html', '.htm')):
+                html_content = uploaded_file.read().decode('utf-8', errors='ignore')
+                tables = pd.read_html(html_content)
+                
+                if len(tables) > 0:
+                    df_import = tables[0]
+                    st.success(f"✅ HTML файл обработан! Найдено {len(df_import)} записей")
+                else:
+                    st.error("❌ В HTML файле не найдены таблицы")
+            
+            elif uploaded_file.name.endswith('.csv'):
+                try:
+                    df_import = pd.read_csv(uploaded_file, sep=';', encoding='utf-8')
+                except:
+                    try:
+                        df_import = pd.read_csv(uploaded_file, sep=',', encoding='utf-8')
+                    except:
+                        df_import = pd.read_csv(uploaded_file, sep='\t', encoding='utf-8')
+                
+                st.success(f"✅ CSV файл загружен! Найдено {len(df_import)} записей")
+            
+            elif uploaded_file.name.endswith(('.xlsx', '.xls')):
                 df_import = pd.read_excel(uploaded_file)
+                st.success(f"✅ Excel файл загружен! Найдено {len(df_import)} записей")
             
-            st.success(f"✅ Файл загружен! Найдено {len(df_import)} записей")
-            
-            # Показываем превью
-            st.subheader("Превью данных")
-            st.dataframe(df_import.head(10), use_container_width=True)
-            
-            # Маппинг колонок
-            st.subheader("Сопоставление колонок")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                ticker_col = st.selectbox("Колонка с тикером", df_import.columns.tolist())
-            with col2:
-                date_col = st.selectbox("Колонка с датой", df_import.columns.tolist())
-            with col3:
-                qty_col = st.selectbox("Колонка с количеством", df_import.columns.tolist())
-            with col4:
-                price_col = st.selectbox("Колонка с ценой", df_import.columns.tolist())
-            
-            if st.button("Применить импорт"):
-                # Группируем по тикеру и считаем среднюю цену
-                grouped = df_import.groupby(ticker_col).agg({
-                    qty_col: 'sum',
-                    price_col: 'mean'
-                }).reset_index()
+            if df_import is not None and len(df_import) > 0:
+                st.subheader("Превью данных")
+                st.dataframe(df_import.head(10), use_container_width=True)
                 
-                # Обновляем позиции
-                for _, row in grouped.iterrows():
-                    ticker = row[ticker_col]
-                    qty = int(row[qty_col])
-                    price = float(row[price_col])
-                    
-                    # Ищем позицию
-                    found = False
-                    for pos in st.session_state.positions:
-                        if pos['ticker'] == ticker:
-                            pos['qty'] = qty
-                            pos['buy_price'] = price
-                            found = True
-                            break
-                    
-                    if not found:
-                        st.session_state.positions.append({
-                            'ticker': ticker,
-                            'short_name': ticker,
-                            'qty': qty,
-                            'buy_price': price,
-                            'coupon_rate': 0.10,
-                            'duration': 5.0,
-                            'current_price': price
-                        })
+                st.markdown("---")
+                st.subheader("Сопоставление колонок")
                 
-                st.success("✅ Данные импортированы!")
-                st.rerun()
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    ticker_col = st.selectbox("Тикер/Название", df_import.columns.tolist(), key="ticker_col")
+                with col2:
+                    date_col = st.selectbox("Дата", df_import.columns.tolist(), key="date_col")
+                with col3:
+                    qty_col = st.selectbox("Количество", df_import.columns.tolist(), key="qty_col")
+                with col4:
+                    price_col = st.selectbox("Цена", df_import.columns.tolist(), key="price_col")
+                
+                if st.button("Применить импорт", type="primary"):
+                    df_filtered = df_import.copy()
+                    df_filtered[ticker_col] = df_filtered[ticker_col].astype(str).str.strip()
+                    
+                    grouped = df_filtered.groupby(ticker_col).agg({
+                        qty_col: 'sum',
+                        price_col: 'mean'
+                    }).reset_index()
+                    
+                    updated_count = 0
+                    added_count = 0
+                    
+                    for _, row in grouped.iterrows():
+                        ticker = str(row[ticker_col]).strip()
+                        qty = int(float(row[qty_col]))
+                        price = float(row[price_col])
+                        
+                        found = False
+                        for pos in st.session_state.positions:
+                            if pos['ticker'] == ticker or ticker in pos['ticker'] or pos['ticker'] in ticker:
+                                pos['qty'] = qty
+                                pos['buy_price'] = price
+                                found = True
+                                updated_count += 1
+                                break
+                        
+                        if not found:
+                            import re
+                            short_name = ticker
+                            match = re.search(r'26\d{3}', ticker)
+                            if match:
+                                short_name = f"ОФЗ {match.group()}"
+                            
+                            st.session_state.positions.append({
+                                'ticker': ticker,
+                                'short_name': short_name,
+                                'qty': qty,
+                                'buy_price': price,
+                                'coupon_rate': 0.10,
+                                'duration': 5.0,
+                                'current_price': price
+                            })
+                            added_count += 1
+                    
+                    st.success(f"✅ Импорт завершен! Обновлено: {updated_count}, Добавлено: {added_count}")
+                    st.rerun()
         
         except Exception as e:
-            st.error(f"❌ Ошибка чтения файла: {e}")
+            st.error(f"❌ Ошибка обработки файла: {e}")
     
     st.markdown("---")
     
-    # Ручной ввод
     st.subheader("Ручное обновление цен покупки")
     
-    st.info("Если у вас нет CSV файла, можно вручную обновить цены покупки для каждой облигации:")
-    
     for i, pos in enumerate(st.session_state.positions):
-        col1, col2 = st.columns([3, 1])
+        col1, col2, col3 = st.columns([3, 1, 1])
         
         with col1:
             st.markdown(f"**{pos['short_name']}** ({pos['ticker']})")
         
         with col2:
+            st.markdown(f"Текущая: {pos['buy_price']}%")
+        
+        with col3:
             new_price = st.number_input(
-                "Цена покупки %",
+                "Новая цена %",
                 value=float(pos['buy_price']),
                 step=0.1,
-                key=f"manual_price_{i}"
+                key=f"manual_price_{i}",
+                label_visibility="collapsed"
             )
         
         if st.button("Обновить", key=f"manual_update_{i}"):
@@ -928,22 +1091,32 @@ elif page == "Импорт из брокера":
 
 # ==================== ДОСТИЖЕНИЯ ====================
 
-elif page == "🎮 Достижения":
-    st.title("🎮 Ваши достижения")
+elif page == " Достижения":
+    st.title(" Ваши достижения")
     
-    level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
+    level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
+    stars_count, star_icon = get_star_level(metrics['annual_coupon'])
     
     st.markdown(f"## Ваш уровень: {level_name}")
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        progress_to_next = min(metrics['total_value'] / next_level, 1.0)
-        st.progress(progress_to_next)
-        st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+        if metrics['total_value'] < 10_000_000:
+            progress_to_next = min(metrics['total_value'] / next_level, 1.0)
+            st.progress(progress_to_next)
+            st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+        else:
+            st.caption("🌟 Максимальный уровень!")
     
     with col2:
-        st.markdown(f"<div class='level-badge'>{level_name}</div>", unsafe_allow_html=True)
+        st.markdown(f'<div class="{level_css}">{level_name}</div>', unsafe_allow_html=True)
+    
+    with col3:
+        if stars_count > 0:
+            st.markdown(f'<div class="stars-display">{star_icon} {stars_count} звезд</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="stars-display">⭐ 0 звезд</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -958,7 +1131,7 @@ elif page == "🎮 Достижения":
         st.metric("Общий P&L", f"{metrics['total_pnl']:+,.0f} ₽")
     
     with col3:
-        st.metric("Количество облигаций", len(st.session_state.positions))
+        st.metric("Облигаций", len(st.session_state.positions))
     
     with col4:
         achievements = get_achievements(metrics)
@@ -986,7 +1159,7 @@ elif page == "🎮 Достижения":
             else:
                 st.markdown(f"""
                 <div style='background-color: #e0e0e0; padding: 20px; border-radius: 15px; margin: 10px 0; opacity: 0.6;'>
-                    <h3>{achievement['icon']} {achievement['name']} 🔒</h3>
+                    <h3>{achievement['icon']} {achievement['name']} </h3>
                     <p>{achievement['description']}</p>
                     <p><small>Прогресс: {achievement['condition']}</small></p>
                 </div>
