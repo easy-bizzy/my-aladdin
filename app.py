@@ -69,7 +69,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=300, show_spinner="Loading prices from MOEX...")
+# БЕЗ КЭША — цены обновляются при каждом открытии!
 def get_moex_prices(tickers):
     prices = {}
     base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
@@ -116,16 +116,18 @@ def get_moex_prices(tickers):
 
 if 'positions' not in st.session_state:
     st.session_state.positions = [
-        {'ticker': 'SU26238RMFS4', 'short_name': 'OFZ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
-        {'ticker': 'SU26246RMFS5', 'short_name': 'OFZ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6},
-        {'ticker': 'SU26247RMFS1', 'short_name': 'OFZ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08},
-        {'ticker': 'SU26248RMFS9', 'short_name': 'OFZ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2},
-        {'ticker': 'SU26254RMFS6', 'short_name': 'OFZ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06}
+        {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
+        {'ticker': 'SU26246RMFS5', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6},
+        {'ticker': 'SU26247RMFS1', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08},
+        {'ticker': 'SU26248RMFS9', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2},
+        {'ticker': 'SU26254RMFS6', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06}
     ]
 
 
+# Получаем цены БЕЗ кэша — всегда свежие!
 tickers = [pos['ticker'] for pos in st.session_state.positions]
 live_prices = get_moex_prices(tickers)
+price_update_time = datetime.now()
 
 for pos in st.session_state.positions:
     price_from_moex = live_prices.get(pos['ticker'])
@@ -167,44 +169,51 @@ with st.sidebar:
     st.markdown("---")
     
     page = st.radio(
-        "Navigation",
-        ["Home", "Positions", "Stress Tests", "Goal Forecast"],
+        "Навигация",
+        ["Главная", "Позиции", "Стресс-тесты", "Прогноз цели"],
         index=0
     )
     
     st.markdown("---")
-    st.caption(f"Updated: {datetime.now().strftime('%H:%M')}")
-    st.caption(f"Source: MOEX ISS API")
+    st.caption(f"Цены обновлены: {price_update_time.strftime('%H:%M:%S')}")
+    st.caption(f"Источник: MOEX ISS API")
     
-    if st.button("Refresh Prices"):
-        st.cache_data.clear()
+    if st.button("Обновить цены"):
         st.rerun()
 
 
-if page == "Home":
-    st.title("Portfolio Overview")
+if page == "Главная":
+    st.title("Обзор портфеля")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Value", f"{metrics['total_value']:,.0f} RUB", 
-                 f"{metrics['total_pnl']:+,.0f} RUB")
+        st.metric("Стоимость", f"{metrics['total_value']:,.0f} ₽", 
+                 f"{metrics['total_pnl']:+,.0f} ₽")
     
     with col2:
-        st.metric("Return", f"{metrics['total_pnl_pct']:+.2f}%", "vs purchase")
+        st.metric("Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     
     with col3:
-        st.metric("Duration", f"{metrics['weighted_duration']:.2f} years", "weighted avg")
+        st.metric("Дюрация", f"{metrics['weighted_duration']:.2f} лет", "средневзвеш.")
     
     with col4:
-        st.metric("DV01", f"{metrics['dv01']:,.0f} RUB", "risk per 0.01%")
+        st.metric("DV01", f"{metrics['dv01']:,.0f} ₽", "риск на 0.01%")
+    
+    st.markdown("---")
+    
+    # ТАБЛИЦА ЦЕН — чтобы было понятно, что это цена, а не P&L
+    st.subheader("Текущие цены облигаций")
+    price_df = metrics['details'][['short_name', 'buy_price', 'current_price', 'pnl']].copy()
+    price_df.columns = ['Облигация', 'Цена покупки %', 'Текущая цена %', 'P&L (₽)']
+    st.dataframe(price_df, use_container_width=True)
     
     st.markdown("---")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Portfolio Distribution")
+        st.subheader("Распределение портфеля")
         try:
             fig_pie = px.pie(metrics['details'], values='market_value', 
                             names='short_name', hole=0.4,
@@ -212,59 +221,69 @@ if page == "Home":
             fig_pie.update_layout(height=400, template='plotly_white')
             st.plotly_chart(fig_pie, use_container_width=True)
         except Exception as e:
-            st.info("Chart temporarily unavailable")
+            st.info("График временно недоступен")
     
     with col2:
-        st.subheader("P&L by Position")
+        st.subheader("P&L по позициям (в рублях)")
         try:
+            # ГОРИЗОНТАЛЬНЫЙ график — все ОФЗ видны!
             colors = ['rgb(46, 204, 113)' if x > 0 else 'rgb(231, 76, 60)' 
                       for x in metrics['details']['pnl']]
             fig_bar = go.Figure(go.Bar(
-                x=metrics['details']['short_name'],
-                y=metrics['details']['pnl'],
-                marker_color=colors
+                y=metrics['details']['short_name'],  # ГОРИЗОНТАЛЬНО!
+                x=metrics['details']['pnl'],
+                marker_color=colors,
+                text=metrics['details']['pnl'].apply(lambda x: f"{x:+,.0f} ₽"),
+                textposition='outside',
+                orientation='h'
             ))
-            fig_bar.update_layout(height=400, showlegend=False, template='plotly_white')
+            fig_bar.update_layout(
+                height=400, 
+                showlegend=False, 
+                template='plotly_white',
+                xaxis_title="Прибыль/Убыток (₽)",
+                yaxis_title=""
+            )
             st.plotly_chart(fig_bar, use_container_width=True)
         except Exception as e:
-            st.info("Chart temporarily unavailable")
+            st.info("График временно недоступен")
     
     st.markdown("---")
-    st.subheader("Progress to Goal: 5,000,000 RUB")
+    st.subheader("Прогресс к цели 5 000 000 ₽")
     progress = min(metrics['total_value'] / 5_000_000, 1.0)
     st.progress(progress)
-    st.caption(f"Achieved: {metrics['total_value']:,.0f} RUB ({progress*100:.1f}%)")
+    st.caption(f"Достигнуто: {metrics['total_value']:,.0f} ₽ ({progress*100:.1f}%)")
     
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Coupon per year", f"{metrics['annual_coupon']:,.0f} RUB")
+        st.metric("Купон в год", f"{metrics['annual_coupon']:,.0f} ₽")
     with col2:
-        st.metric("Coupon per month", f"{metrics['annual_coupon']/12:,.0f} RUB")
+        st.metric("Купон в месяц", f"{metrics['annual_coupon']/12:,.0f} ₽")
     with col3:
-        st.metric("Coupon per day", f"{metrics['annual_coupon']/365:,.0f} RUB")
+        st.metric("Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
 
 
-elif page == "Positions":
-    st.title("Manage Positions")
+elif page == "Позиции":
+    st.title("Управление позициями")
     
-    st.subheader("Current Positions (prices from MOEX)")
+    st.subheader("Текущие позиции (цены с MOEX)")
     
     df_display = metrics['details'][['short_name', 'ticker', 'qty', 'buy_price', 
                                      'current_price', 'market_value', 'pnl', 'pnl_pct']].copy()
-    df_display.columns = ['Bond', 'Ticker', 'Qty', 'Buy %', 
-                          'Current %', 'Value RUB', 'P&L RUB', 'P&L %']
+    df_display.columns = ['Облигация', 'Тикер', 'Кол-во', 'Покупка %', 
+                          'Сейчас %', 'Стоимость ₽', 'P&L ₽', 'P&L %']
     st.dataframe(df_display, use_container_width=True)
     
     st.markdown("---")
     
-    st.subheader("Edit Position")
+    st.subheader("Редактирование позиции")
     
-    position_options = [f"{pos['short_name']} ({pos['qty']} pcs)" 
+    position_options = [f"{pos['short_name']} ({pos['qty']} шт)" 
                         for pos in st.session_state.positions]
     
     selected_position = st.selectbox(
-        "Select bond:",
+        "Выберите облигацию:",
         position_options,
         key="select_position"
     )
@@ -277,7 +296,7 @@ elif page == "Positions":
         
         with col1:
             new_qty = st.number_input(
-                "Quantity (pcs)",
+                "Количество (шт)",
                 min_value=0,
                 value=int(pos['qty']),
                 step=1,
@@ -286,14 +305,14 @@ elif page == "Positions":
         
         with col2:
             new_ticker = st.text_input(
-                "Ticker",
+                "Тикер",
                 value=pos['ticker'],
                 key=f"ticker_{idx}"
             )
         
         with col3:
             new_name = st.text_input(
-                "Name",
+                "Название",
                 value=pos['short_name'],
                 key=f"name_{idx}"
             )
@@ -302,7 +321,7 @@ elif page == "Positions":
         
         with col4:
             new_buy_price = st.number_input(
-                "Buy Price (%)",
+                "Цена покупки (%)",
                 value=float(pos['buy_price']),
                 step=0.1,
                 key=f"buy_price_{idx}"
@@ -310,7 +329,7 @@ elif page == "Positions":
         
         with col5:
             new_coupon = st.number_input(
-                "Coupon (%)",
+                "Купон (%)",
                 value=float(pos['coupon_rate'] * 100),
                 step=0.1,
                 key=f"coupon_{idx}"
@@ -318,7 +337,7 @@ elif page == "Positions":
         
         with col6:
             new_duration = st.number_input(
-                "Duration (years)",
+                "Дюрация (лет)",
                 value=float(pos['duration']),
                 step=0.1,
                 key=f"duration_{idx}"
@@ -327,7 +346,7 @@ elif page == "Positions":
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
-            if st.button("Save Changes", key=f"save_{idx}"):
+            if st.button("Сохранить", key=f"save_{idx}"):
                 st.session_state.positions[idx] = {
                     'ticker': new_ticker,
                     'short_name': new_name,
@@ -337,33 +356,33 @@ elif page == "Positions":
                     'duration': float(new_duration),
                     'current_price': pos['current_price']
                 }
-                st.success(f"Position '{new_name}' updated!")
+                st.success(f"Позиция '{new_name}' обновлена!")
                 st.rerun()
         
         with col_btn2:
-            if st.button("Delete Position", key=f"delete_{idx}"):
+            if st.button("Удалить", key=f"delete_{idx}"):
                 name = pos['short_name']
                 st.session_state.positions.pop(idx)
-                st.success(f"Position '{name}' deleted!")
+                st.success(f"Позиция '{name}' удалена!")
                 st.rerun()
     
     st.markdown("---")
     
-    st.subheader("Add New Position")
+    st.subheader("Добавить новую позицию")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        add_ticker = st.text_input("Ticker (SU...)", "", key="add_ticker")
-        add_name = st.text_input("Name", "", key="add_name")
-        add_qty = st.number_input("Quantity", min_value=1, value=10, key="add_qty")
+        add_ticker = st.text_input("Тикер (SU...)", "", key="add_ticker")
+        add_name = st.text_input("Название", "", key="add_name")
+        add_qty = st.number_input("Количество", min_value=1, value=10, key="add_qty")
     
     with col2:
-        add_buy_price = st.number_input("Buy Price (%)", value=90.0, step=0.1, key="add_buy_price")
-        add_coupon = st.number_input("Coupon (%)", value=10.0, step=0.1, key="add_coupon")
-        add_duration = st.number_input("Duration (years)", value=5.0, step=0.1, key="add_duration")
+        add_buy_price = st.number_input("Цена покупки (%)", value=90.0, step=0.1, key="add_buy_price")
+        add_coupon = st.number_input("Купон (%)", value=10.0, step=0.1, key="add_coupon")
+        add_duration = st.number_input("Дюрация (лет)", value=5.0, step=0.1, key="add_duration")
     
-    if st.button("Add Position", key="add_position_btn"):
+    if st.button("Добавить позицию", key="add_position_btn"):
         if add_ticker and add_name:
             st.session_state.positions.append({
                 'ticker': add_ticker,
@@ -374,21 +393,20 @@ elif page == "Positions":
                 'duration': float(add_duration),
                 'current_price': None
             })
-            st.success(f"Added: {add_name}")
-            st.cache_data.clear()
+            st.success(f"Добавлена: {add_name}")
             st.rerun()
         else:
-            st.error("Enter ticker and name!")
+            st.error("Введите тикер и название!")
 
 
-elif page == "Stress Tests":
-    st.title("Stress Testing")
+elif page == "Стресс-тесты":
+    st.title("Стресс-тестирование")
     
     col1, col2 = st.columns(2)
     with col1:
-        rate_shock = st.slider("Rate Change (%)", -5.0, 10.0, 0.0, 0.1)
+        rate_shock = st.slider("Изменение ставки (%)", -5.0, 10.0, 0.0, 0.1)
     with col2:
-        fx_shock = st.slider("RUB Weakening (%)", 0.0, 50.0, 0.0, 1.0)
+        fx_shock = st.slider("Ослабление рубля (%)", 0.0, 50.0, 0.0, 1.0)
     
     duration = metrics['weighted_duration']
     current_value = metrics['total_value']
@@ -403,22 +421,22 @@ elif page == "Stress Tests":
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Current Value", f"{current_value:,.0f} RUB")
+        st.metric("Текущая стоимость", f"{current_value:,.0f} ₽")
     with col2:
-        st.metric("Change", f"{value_change:+,.0f} RUB", f"{change_pct:+.2f}%")
+        st.metric("Изменение", f"{value_change:+,.0f} ₽", f"{change_pct:+.2f}%")
     with col3:
-        st.metric("New Value", f"{new_value:,.0f} RUB")
+        st.metric("Новая стоимость", f"{new_value:,.0f} ₽")
     
     st.markdown("---")
-    st.subheader("Scenarios")
+    st.subheader("Сценарии")
     
     scenarios = [
-        ("Strong rate cut", -3.0, 0),
-        ("Moderate rate cut", -1.5, 0),
-        ("No change", 0, 0),
-        ("Small rate hike", 1.0, 0),
-        ("Significant rate hike", 2.0, 0),
-        ("Crisis", 5.0, 20),
+        ("Сильное снижение ставки", -3.0, 0),
+        ("Умеренное снижение", -1.5, 0),
+        ("Без изменений", 0, 0),
+        ("Небольшой рост", 1.0, 0),
+        ("Значительный рост", 2.0, 0),
+        ("Кризис", 5.0, 20),
     ]
     
     scenario_data = []
@@ -427,20 +445,20 @@ elif page == "Stress Tests":
         if fx > 0:
             change -= current_value * (duration * fx * 0.15 / 100)
         scenario_data.append({
-            'Scenario': name,
-            'Rate Shock': f"{rate:+.1f}%",
-            'Change RUB': f"{change:+,.0f}",
-            'New Value RUB': f"{current_value + change:,.0f}"
+            'Сценарий': name,
+            'Шок ставки': f"{rate:+.1f}%",
+            'Изменение ₽': f"{change:+,.0f}",
+            'Новая стоимость ₽': f"{current_value + change:,.0f}"
         })
     
     st.dataframe(pd.DataFrame(scenario_data), use_container_width=True, hide_index=True)
 
 
-elif page == "Goal Forecast":
-    st.title("Goal Achievement Forecast")
+elif page == "Прогноз цели":
+    st.title("Прогноз достижения цели")
     
-    target = st.number_input("Goal (RUB)", value=5_000_000, step=100_000)
-    monthly = st.number_input("Monthly Investment (RUB)", value=100_000, step=10_000)
+    target = st.number_input("Цель (₽)", value=5_000_000, step=100_000)
+    monthly = st.number_input("Ежемесячные вложения (₽)", value=100_000, step=10_000)
     
     forecasts = []
     for pos in st.session_state.positions:
@@ -458,32 +476,32 @@ elif page == "Goal Forecast":
                 total_coupons += coupon_income
         
         forecasts.append({
-            'Bond': pos['short_name'],
-            'Years to Goal': round(months / 12, 1),
-            'Coupon %': f"{coupon*100:.2f}%",
-            'Reinvested Coupons RUB': f"{total_coupons:,.0f}"
+            'Облигация': pos['short_name'],
+            'Лет до цели': round(months / 12, 1),
+            'Купон %': f"{coupon*100:.2f}%",
+            'Реинвест. купоны ₽': f"{total_coupons:,.0f}"
         })
     
-    df_forecast = pd.DataFrame(forecasts).sort_values('Years to Goal')
+    df_forecast = pd.DataFrame(forecasts).sort_values('Лет до цели')
     
     st.markdown("---")
-    st.subheader("Time to Goal by Bond")
+    st.subheader("Время достижения цели")
     
     try:
         fig = go.Figure(go.Bar(
-            x=df_forecast['Bond'],
-            y=df_forecast['Years to Goal'],
+            x=df_forecast['Облигация'],
+            y=df_forecast['Лет до цели'],
             marker_color=px.colors.sequential.Viridis[:len(df_forecast)],
-            text=df_forecast['Years to Goal'].apply(lambda x: f"{x:.1f} years"),
+            text=df_forecast['Лет до цели'].apply(lambda x: f"{x:.1f} лет"),
             textposition='auto'
         ))
-        fig.update_layout(height=400, template='plotly_white', yaxis_title="Years")
+        fig.update_layout(height=400, template='plotly_white', yaxis_title="Лет")
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        st.info("Chart temporarily unavailable")
+        st.info("График временно недоступен")
     
     st.dataframe(df_forecast, use_container_width=True, hide_index=True)
     
     if len(df_forecast) > 0:
         best = df_forecast.iloc[0]
-        st.success(f"**Best choice:** {best['Bond']} - {best['Years to Goal']:.1f} years")
+        st.success(f"**Лучший выбор:** {best['Облигация']} — {best['Лет до цели']:.1f} лет")
