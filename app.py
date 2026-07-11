@@ -741,10 +741,44 @@ elif page == "🎮 Достижения":
     st.markdown("---")
     
     # Достижения
-    st.subheader("🏆 Достижения")
+    st.subheader(" Достижения")
     
     achievements = get_achievements(metrics)
     
     col1, col2 = st.columns(2)
     
-    for i, achievement in enumerate(achie
+    for i, achievement in enumerate(achievements):
+        with (col1 if i % 2 == 0 else col2):
+            if achievement['unlocked']:
+                st.markdown(f"""
+                <div class='achievement-card'>
+                    <h3>{achievement['icon']} {achievement['name']} ✅</h3>
+                    <p>{achievement['description']}</p>
+                    <p><small>Статус: {achievement['condition']}</small></p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style='background-color: #e0e0e0; padding: 20px; border-radius: 15px; margin: 10px 0; opacity: 0.6;'>
+                    <h3>{achievement['icon']} {achievement['name']} 🔒</h3>
+                    <p>{achievement['description']}</p>
+                    <p><small>Прогресс: {achievement['condition']}</small></p>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Следующая цель
+    st.subheader("🎯 Следующая цель")
+    
+    next_achievement = None
+    for a in achievements:
+        if not a['unlocked']:
+            next_achievement = a
+            break
+    
+    if next_achievement:
+        st.info(f"**{next_achievement['icon']} {next_achievement['name']}** — {next_achievement['description']}")
+        st.caption(f"Прогресс: {next_achievement['condition']}")
+    else:
+        st.success(" Все достижения разблокированы! Вы настоящий мастер инвестиций!")
