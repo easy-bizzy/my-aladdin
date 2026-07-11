@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
 from datetime import datetime, timedelta
 
 # ==================== НАСТРОЙКА СТРАНИЦЫ ====================
@@ -13,40 +14,104 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==================== CSS - АДАПТИВНЫЙ ТЕКСТ ====================
+# ==================== АДАПТИВНЫЙ CSS ====================
+# Светлая тема → черный текст на белом фоне
+# Темная тема → белый текст на черном фоне
 
 st.markdown("""
 <style>
-    /* Принудительно СВЕТЛЫЙ фон для всего приложения */
-    .main, .main *, body, html {
-        background-color: #ffffff !important;
+    /* ============================================ */
+    /* СВЕТЛАЯ ТЕМА (по умолчанию)                   */
+    /* ============================================ */
+    @media (prefers-color-scheme: light) {
+        .main, .main *, body, html {
+            background-color: #ffffff !important;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th {
+            color: #000000 !important;
+        }
+        div[data-testid="stMetric"] {
+            background-color: #f8f9fa !important;
+            border: 2px solid #e0e0e0 !important;
+        }
+        div[data-testid="stMetric"] p {
+            color: #000000 !important;
+        }
+        div[data-testid="stMetric"] label {
+            color: #333333 !important;
+        }
+        .stDataFrame th {
+            background-color: #f0f0f0 !important;
+            color: #000000 !important;
+        }
+        .stDataFrame td {
+            color: #000000 !important;
+        }
+        input, textarea, select {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
     }
     
-    /* Весь текст - ЧЕРНЫЙ на белом фоне */
-    h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th {
-        color: #000000 !important;
+    /* ============================================ */
+    /* ТЕМНАЯ ТЕМА                                   */
+    /* ============================================ */
+    @media (prefers-color-scheme: dark) {
+        .main, .main *, body, html {
+            background-color: #0e1117 !important;
+        }
+        h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th {
+            color: #ffffff !important;
+        }
+        div[data-testid="stMetric"] {
+            background-color: #1e2937 !important;
+            border: 2px solid #313846 !important;
+        }
+        div[data-testid="stMetric"] p {
+            color: #ffffff !important;
+        }
+        div[data-testid="stMetric"] label {
+            color: #b0b0b0 !important;
+        }
+        .stDataFrame th {
+            background-color: #1e2937 !important;
+            color: #ffffff !important;
+        }
+        .stDataFrame td {
+            color: #ffffff !important;
+        }
+        input, textarea, select {
+            background-color: #1e2937 !important;
+            color: #ffffff !important;
+        }
+        .stSuccess {
+            background-color: #0f5132 !important;
+            color: #ffffff !important;
+        }
+        .stError {
+            background-color: #842029 !important;
+            color: #ffffff !important;
+        }
     }
     
-    /* Карточки метрик */
-    div[data-testid="stMetric"] { 
-        background-color: #f8f9fa !important;
-        border: 2px solid #e0e0e0 !important;
+    /* ============================================ */
+    /* ОБЩИЕ СТИЛИ (для любой темы)                  */
+    /* ============================================ */
+    div[data-testid="stMetric"] {
         border-radius: 10px !important;
         padding: 15px !important;
     }
-    div[data-testid="stMetric"] p { 
-        color: #000000 !important; 
+    div[data-testid="stMetric"] p {
         font-weight: bold !important;
         font-size: 24px !important;
     }
-    div[data-testid="stMetric"] label { 
-        color: #333333 !important; 
+    div[data-testid="stMetric"] label {
         font-size: 14px !important;
     }
     
-    /* Сайдбар - темный фон, БЕЛЫЙ текст */
-    section[data-testid="stSidebar"] { 
-        background-color: #1e3a5f !important; 
+    /* Сайдбар - всегда темный с белым текстом */
+    section[data-testid="stSidebar"] {
+        background-color: #1e3a5f !important;
     }
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
@@ -67,42 +132,6 @@ st.markdown("""
         padding: 10px 20px !important;
     }
     
-    /* Поля ввода */
-    input, textarea, select {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 2px solid #d0d0d0 !important;
-    }
-    
-    /* Таблицы */
-    .stDataFrame, div[data-testid="stDataFrame"] {
-        background-color: #ffffff !important;
-    }
-    .stDataFrame table, div[data-testid="stDataFrame"] table {
-        color: #000000 !important;
-    }
-    .stDataFrame th, div[data-testid="stDataFrame"] th {
-        background-color: #f0f0f0 !important;
-        color: #000000 !important;
-    }
-    .stDataFrame td, div[data-testid="stDataFrame"] td {
-        color: #000000 !important;
-    }
-    
-    /* Success/Error блоки */
-    .stSuccess {
-        background-color: #d4edda !important;
-        color: #155724 !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-    }
-    .stError {
-        background-color: #f8d7da !important;
-        color: #721c24 !important;
-        border-radius: 8px !important;
-        padding: 15px !important;
-    }
-    
     /* Скрыть футер */
     footer { visibility: hidden; }
     
@@ -114,16 +143,87 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== ФУНКЦИЯ ПОЛУЧЕНИЯ ЦЕН С MOEX ====================
+
+@st.cache_data(ttl=300, show_spinner="🔄 Загрузка цен с Московской биржи...")
+def get_moex_prices(tickers):
+    """
+    Получает актуальные цены с MOEX для списка тикеров.
+    Работает даже ночью - использует PREVPRICE если LAST недоступна.
+    """
+    prices = {}
+    base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
+    
+    for ticker in tickers:
+        try:
+            url = f"{base_url}/{ticker}.json"
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            
+            columns = data.get('marketdata', {}).get('columns', [])
+            rows = data.get('marketdata', {}).get('data', [])
+            
+            if not rows:
+                prices[ticker] = None
+                continue
+            
+            # Пробуем получить LAST (текущая цена)
+            price = None
+            if 'LAST' in columns:
+                last_idx = columns.index('LAST')
+                val = rows[0][last_idx]
+                if val is not None:
+                    price = val
+            
+            # Если LAST = None (биржа закрыта), берем PREVPRICE
+            if price is None and 'PREVPRICE' in columns:
+                prev_idx = columns.index('PREVPRICE')
+                val = rows[0][prev_idx]
+                if val is not None:
+                    price = val
+            
+            # Если и этого нет - пробуем LASTTOPREVPRICE
+            if price is None and 'LASTTOPREVPRICE' in columns:
+                ltp_idx = columns.index('LASTTOPREVPRICE')
+                val = rows[0][ltp_idx]
+                if val is not None:
+                    price = val
+            
+            prices[ticker] = price
+            
+        except Exception as e:
+            prices[ticker] = None
+    
+    return prices
+
 # ==================== ИНИЦИАЛИЗАЦИЯ ДАННЫХ ====================
 
+# ВАЖНО: current_price берется С БИРЖИ, а не хардкодится!
 if 'positions' not in st.session_state:
     st.session_state.positions = [
-        {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2, 'current_price': 62.5},
-        {'ticker': 'SU26246RMFS5', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6, 'current_price': 90.1},
-        {'ticker': 'SU26247RMFS1', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08, 'current_price': 91.2},
-        {'ticker': 'SU26248RMFS9', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2, 'current_price': 89.8},
-        {'ticker': 'SU26254RMFS6', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06, 'current_price': 94.5}
+        {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
+        {'ticker': 'SU26246RMFS5', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6},
+        {'ticker': 'SU26247RMFS1', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08},
+        {'ticker': 'SU26248RMFS9', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2},
+        {'ticker': 'SU26254RMFS6', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06}
     ]
+
+# ==================== АВТООБНОВЛЕНИЕ ЦЕН ПРИ ОТКРЫТИИ ====================
+
+# Получаем список всех тикеров
+tickers = [pos['ticker'] for pos in st.session_state.positions]
+
+# Загружаем цены с биржи (с кэшем 5 минут)
+live_prices = get_moex_prices(tickers)
+
+# Обновляем current_price для каждой позиции
+for pos in st.session_state.positions:
+    price_from_moex = live_prices.get(pos['ticker'])
+    if price_from_moex is not None:
+        pos['current_price'] = price_from_moex
+    elif 'current_price' not in pos or pos['current_price'] is None:
+        # Первый запуск - используем цену покупки
+        pos['current_price'] = pos['buy_price']
 
 # ==================== РАСЧЁТ МЕТРИК ====================
 
@@ -161,34 +261,17 @@ with st.sidebar:
     
     page = st.radio(
         "Навигация",
-        ["🏠 Главная", "📊 Позиции", " Стресс-тесты", " Прогноз цели"],
+        ["🏠 Главная", "📊 Позиции", "🔥 Стресс-тесты", "🎯 Прогноз цели"],
         index=0
     )
     
     st.markdown("---")
     st.caption(f"🔄 Обновлено: {datetime.now().strftime('%H:%M')}")
+    st.caption(f"📡 Источник: MOEX ISS API")
     
-    # Кнопка обновления цен (опционально)
-    if st.button("🔄 Обновить цены с MOEX"):
-        try:
-            import requests
-            base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
-            for pos in st.session_state.positions:
-                try:
-                    url = f"{base_url}/{pos['ticker']}.json"
-                    response = requests.get(url, timeout=5)
-                    data = response.json()
-                    market_data = data.get('marketdata', {}).get('data', [])
-                    if market_data and len(market_data[0]) > 12:
-                        price = market_data[0][12]
-                        if price:
-                            pos['current_price'] = price
-                except:
-                    pass
-            st.success("✅ Цены обновлены!")
-            st.rerun()
-        except:
-            st.error("❌ Ошибка обновления цен")
+    if st.button("🔄 Обновить цены принудительно"):
+        st.cache_data.clear()
+        st.rerun()
 
 # ==================== ГЛАВНАЯ ====================
 
@@ -205,7 +288,7 @@ if page == "🏠 Главная":
         st.metric("📈 Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     
     with col3:
-        st.metric("️ Дюрация", f"{metrics['weighted_duration']:.2f} лет", "средневзвеш.")
+        st.metric("⏱️ Дюрация", f"{metrics['weighted_duration']:.2f} лет", "средневзвеш.")
     
     with col4:
         st.metric("🎯 DV01", f"{metrics['dv01']:,.0f} ₽", "риск на 0.01%")
@@ -215,14 +298,15 @@ if page == "🏠 Главная":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader(" Распределение портфеля")
+        st.subheader("📊 Распределение портфеля")
         try:
             fig_pie = px.pie(metrics['details'], values='market_value', 
-                            names='short_name', hole=0.4)
+                            names='short_name', hole=0.4,
+                            color_discrete_sequence=px.colors.qualitative.Set3)
             fig_pie.update_layout(height=400, template='plotly_white')
             st.plotly_chart(fig_pie, use_container_width=True)
         except Exception as e:
-            st.info("📊 График распределения временно недоступен")
+            st.info("📊 График временно недоступен")
     
     with col2:
         st.subheader("💹 P&L по позициям")
@@ -237,7 +321,7 @@ if page == "🏠 Главная":
             fig_bar.update_layout(height=400, showlegend=False, template='plotly_white')
             st.plotly_chart(fig_bar, use_container_width=True)
         except Exception as e:
-            st.info(" График P&L временно недоступен")
+            st.info("📊 График временно недоступен")
     
     st.markdown("---")
     st.subheader("🎯 Прогресс к цели 5 000 000 ₽")
@@ -252,24 +336,24 @@ if page == "🏠 Главная":
     with col2:
         st.metric("💵 Купон в месяц", f"{metrics['annual_coupon']/12:,.0f} ₽")
     with col3:
-        st.metric(" Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
+        st.metric("💵 Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
 
 # ==================== ПОЗИЦИИ ====================
 
 elif page == "📊 Позиции":
     st.title("💼 Управление позициями")
     
-    st.subheader("📋 Текущие позиции")
+    st.subheader("📋 Текущие позиции (цены с MOEX)")
     
-    df_display = metrics['details'][['short_name', 'qty', 'buy_price', 
+    df_display = metrics['details'][['short_name', 'ticker', 'qty', 'buy_price', 
                                      'current_price', 'market_value', 'pnl', 'pnl_pct']].copy()
-    df_display.columns = ['Облигация', 'Кол-во', 'Покупка %', 'Сейчас %', 
-                          'Стоимость ₽', 'P&L ₽', 'P&L %']
+    df_display.columns = ['Облигация', 'Тикер', 'Кол-во', 'Покупка %', 
+                          'Сейчас %', 'Стоимость ₽', 'P&L ₽', 'P&L %']
     st.dataframe(df_display, use_container_width=True)
     
     st.markdown("---")
     
-    st.subheader("⚙️ Управление позициями")
+    st.subheader("⚙️ Редактирование позиции")
     
     position_options = [f"{pos['short_name']} ({pos['qty']} шт)" 
                         for pos in st.session_state.positions]
@@ -338,7 +422,7 @@ elif page == "📊 Позиции":
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
-            if st.button("💾 Сохранить изменения", key=f"save_{idx}"):
+            if st.button("💾 Сохранить", key=f"save_{idx}"):
                 st.session_state.positions[idx] = {
                     'ticker': new_ticker,
                     'short_name': new_name,
@@ -346,25 +430,26 @@ elif page == "📊 Позиции":
                     'buy_price': float(new_buy_price),
                     'coupon_rate': float(new_coupon) / 100,
                     'duration': float(new_duration),
-                    'current_price': float(pos['current_price'])
+                    'current_price': pos['current_price']
                 }
                 st.success(f"✅ Позиция '{new_name}' обновлена!")
                 st.rerun()
         
         with col_btn2:
-            if st.button("🗑️ Удалить позицию", key=f"delete_{idx}"):
+            if st.button("🗑️ Удалить", key=f"delete_{idx}"):
+                name = pos['short_name']
                 st.session_state.positions.pop(idx)
-                st.success(f"✅ Позиция '{pos['short_name']}' удалена!")
+                st.success(f"✅ Позиция '{name}' удалена!")
                 st.rerun()
     
     st.markdown("---")
     
     st.subheader("➕ Добавить новую позицию")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
-        add_ticker = st.text_input("Тикер", "", key="add_ticker")
+        add_ticker = st.text_input("Тикер (SU...)", "", key="add_ticker")
         add_name = st.text_input("Название", "", key="add_name")
         add_qty = st.number_input("Количество", min_value=1, value=10, key="add_qty")
     
@@ -373,27 +458,26 @@ elif page == "📊 Позиции":
         add_coupon = st.number_input("Купон (%)", value=10.0, step=0.1, key="add_coupon")
         add_duration = st.number_input("Дюрация (лет)", value=5.0, step=0.1, key="add_duration")
     
-    with col3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("✅ Добавить позицию", key="add_position_btn"):
-            if add_ticker and add_name:
-                st.session_state.positions.append({
-                    'ticker': add_ticker,
-                    'short_name': add_name,
-                    'qty': int(add_qty),
-                    'buy_price': float(add_buy_price),
-                    'coupon_rate': float(add_coupon) / 100,
-                    'duration': float(add_duration),
-                    'current_price': float(add_buy_price)
-                })
-                st.success(f"✅ Добавлена: {add_name}")
-                st.rerun()
-            else:
-                st.error("❌ Введите тикер и название!")
+    if st.button("✅ Добавить позицию", key="add_position_btn"):
+        if add_ticker and add_name:
+            st.session_state.positions.append({
+                'ticker': add_ticker,
+                'short_name': add_name,
+                'qty': int(add_qty),
+                'buy_price': float(add_buy_price),
+                'coupon_rate': float(add_coupon) / 100,
+                'duration': float(add_duration),
+                'current_price': None  # Загрузится с биржи
+            })
+            st.success(f"✅ Добавлена: {add_name}")
+            st.cache_data.clear()
+            st.rerun()
+        else:
+            st.error("❌ Введите тикер и название!")
 
 # ==================== СТРЕСС-ТЕСТЫ ====================
 
-elif page == " Стресс-тесты":
+elif page == "🔥 Стресс-тесты":
     st.title("🔥 Стресс-тестирование")
     
     col1, col2 = st.columns(2)
@@ -417,86 +501,13 @@ elif page == " Стресс-тесты":
     with col1:
         st.metric("💰 Текущая", f"{current_value:,.0f} ₽")
     with col2:
-        st.metric(" Изменение", f"{value_change:+,.0f} ₽", f"{change_pct:+.2f}%")
+        st.metric("📊 Изменение", f"{value_change:+,.0f} ₽", f"{change_pct:+.2f}%")
     with col3:
         st.metric("📉 Новая", f"{new_value:,.0f} ₽")
     
     st.markdown("---")
-    st.subheader("📋 Сценарии")
+    st.subheader("📋 Готовые сценарии")
     
     scenarios = [
         ("🟢 Сильное снижение", -3.0, 0),
-        ("🟢 Умеренное снижение", -1.5, 0),
-        ("⚪ Без изменений", 0, 0),
-        ("🟡 Небольшой рост", 1.0, 0),
-        ("🟠 Значительный рост", 2.0, 0),
-        (" Кризис", 5.0, 20),
-    ]
-    
-    scenario_data = []
-    for name, rate, fx in scenarios:
-        change = current_value * (-duration * rate / 100)
-        if fx > 0:
-            change -= current_value * (duration * fx * 0.15 / 100)
-        scenario_data.append({
-            'Сценарий': name,
-            'Шок ставки': f"{rate:+.1f}%",
-            'Изменение ₽': f"{change:+,.0f}",
-            'Новая стоимость ₽': f"{current_value + change:,.0f}"
-        })
-    
-    st.dataframe(pd.DataFrame(scenario_data), use_container_width=True, hide_index=True)
-
-# ==================== ПРОГНОЗ ЦЕЛИ ====================
-
-elif page == "🎯 Прогноз цели":
-    st.title("🎯 Прогноз достижения цели")
-    
-    target = st.number_input("Цель (₽)", value=5_000_000, step=100_000)
-    monthly = st.number_input("Ежемесячные вложения (₽)", value=100_000, step=10_000)
-    
-    forecasts = []
-    for pos in st.session_state.positions:
-        value = pos['qty'] * pos['current_price'] * 10
-        coupon = pos['coupon_rate']
-        
-        months = 0
-        total_coupons = 0
-        while value < target and months < 600:
-            months += 1
-            value += monthly
-            if months % 6 == 0:
-                coupon_income = value * coupon / 2
-                value += coupon_income
-                total_coupons += coupon_income
-        
-        forecasts.append({
-            'Облигация': pos['short_name'],
-            'Лет до цели': round(months / 12, 1),
-            'Купон %': f"{coupon*100:.2f}%",
-            'Реинвест. купоны ₽': f"{total_coupons:,.0f}"
-        })
-    
-    df_forecast = pd.DataFrame(forecasts).sort_values('Лет до цели')
-    
-    st.markdown("---")
-    st.subheader("⏱️ Время достижения цели")
-    
-    try:
-        fig = go.Figure(go.Bar(
-            x=df_forecast['Облигация'],
-            y=df_forecast['Лет до цели'],
-            marker_color=px.colors.sequential.Viridis[:len(df_forecast)],
-            text=df_forecast['Лет до цели'].apply(lambda x: f"{x:.1f} лет"),
-            textposition='auto'
-        ))
-        fig.update_layout(height=400, template='plotly_white', yaxis_title="Лет")
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.info("📊 График временно недоступен")
-    
-    st.dataframe(df_forecast, use_container_width=True, hide_index=True)
-    
-    if len(df_forecast) > 0:
-        best = df_forecast.iloc[0]
-        st.success(f"🏆 **Лучший выбор:** {best['Облигация']} — {best['Лет до цели']:.1f} лет")
+        ("
