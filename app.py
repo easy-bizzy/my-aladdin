@@ -65,12 +65,50 @@ st.markdown("""
         div[data-testid="stMetric"] p { font-size: 18px !important; }
         h1 { font-size: 22px !important; }
     }
+    
+    .achievement-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 10px 0;
+        color: white !important;
+    }
+    
+    .achievement-card p, .achievement-card h3, .achievement-card span {
+        color: white !important;
+    }
+    
+    .level-badge {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 15px 30px;
+        border-radius: 50px;
+        display: inline-block;
+        font-size: 24px;
+        font-weight: bold;
+        color: white !important;
+        margin: 20px 0;
+    }
+    
+    .level-badge p, .level-badge span {
+        color: white !important;
+    }
+    
+    .streak-fire {
+        font-size: 48px;
+        text-align: center;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 def get_moex_prices(tickers):
-    """Получает цены с MOEX для списка тикеров"""
+    """Получает цены с MOEX"""
     prices = {}
     base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
     
@@ -114,7 +152,6 @@ def get_moex_prices(tickers):
     return prices
 
 
-# ПРАВИЛЬНЫЕ ТИКЕРЫ!
 if 'positions' not in st.session_state:
     st.session_state.positions = [
         {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
@@ -164,13 +201,137 @@ def calculate_metrics(positions):
 metrics = calculate_metrics(st.session_state.positions)
 
 
+# ==================== ГЕЙМИФИКАЦИЯ ====================
+
+def get_investor_level(total_value):
+    """Определяет уровень инвестора"""
+    if total_value >= 5_000_000:
+        return "🏆 Легенда", 5_000_000, "Достигнута цель!"
+    elif total_value >= 3_000_000:
+        return "💎 Мастер", 5_000_000, "До легенды осталось"
+    elif total_value >= 2_000_000:
+        return "🥇 Эксперт", 3_000_000, "До мастера осталось"
+    elif total_value >= 1_000_000:
+        return "🥈 Профи", 2_000_000, "До эксперта осталось"
+    elif total_value >= 500_000:
+        return "🥉 Опытный", 1_000_000, "До профи осталось"
+    else:
+        return "🌱 Новичок", 500_000, "До опытного осталось"
+
+def get_achievements(metrics):
+    """Возвращает список достижений"""
+    achievements = []
+    
+    # Первое достижение
+    achievements.append({
+        'name': 'Первые шаги',
+        'icon': '👶',
+        'description': 'Создать первый портфель',
+        'unlocked': True,
+        'condition': 'Всегда открыто'
+    })
+    
+    # 100к в портфеле
+    achievements.append({
+        'name': 'Сотня',
+        'icon': '💰',
+        'description': 'Накопить 100 000 ₽',
+        'unlocked': metrics['total_value'] >= 100_000,
+        'condition': f"{metrics['total_value']:,.0f} / 100 000 ₽"
+    })
+    
+    # 500к в портфеле
+    achievements.append({
+        'name': 'Полмиллиона',
+        'icon': '💎',
+        'description': 'Накопить 500 000 ₽',
+        'unlocked': metrics['total_value'] >= 500_000,
+        'condition': f"{metrics['total_value']:,.0f} / 500 000 ₽"
+    })
+    
+    # 1 млн
+    achievements.append({
+        'name': 'Миллионер',
+        'icon': '🤑',
+        'description': 'Накопить 1 000 000 ₽',
+        'unlocked': metrics['total_value'] >= 1_000_000,
+        'condition': f"{metrics['total_value']:,.0f} / 1 000 000 ₽"
+    })
+    
+    # 5 облигаций
+    achievements.append({
+        'name': 'Диверсификация',
+        'icon': '📊',
+        'description': 'Иметь 5 разных облигаций',
+        'unlocked': len(st.session_state.positions) >= 5,
+        'condition': f"{len(st.session_state.positions)} / 5 облигаций"
+    })
+    
+    # Положительный P&L
+    achievements.append({
+        'name': 'В плюсе',
+        'icon': '📈',
+        'description': 'Портфель в прибыли',
+        'unlocked': metrics['total_pnl'] > 0,
+        'condition': f"P&L: {metrics['total_pnl']:+,.0f} ₽"
+    })
+    
+    # Купонный доход > 100к
+    achievements.append({
+        'name': 'Рентьер',
+        'icon': '💵',
+        'description': 'Годовой купон > 100 000 ₽',
+        'unlocked': metrics['annual_coupon'] >= 100_000,
+        'condition': f"{metrics['annual_coupon']:,.0f} / 100 000 ₽"
+    })
+    
+    # Низкий DV01
+    achievements.append({
+        'name': 'Осторожный',
+        'icon': '🛡️',
+        'description': 'DV01 < 5000 ₽',
+        'unlocked': metrics['dv01'] < 5000,
+        'condition': f"DV01: {metrics['dv01']:,.0f} ₽"
+    })
+    
+    # Цель достигнута
+    achievements.append({
+        'name': 'Цель достигнута!',
+        'icon': '🎯',
+        'description': 'Накопить 5 000 000 ₽',
+        'unlocked': metrics['total_value'] >= 5_000_000,
+        'condition': f"{metrics['total_value']:,.0f} / 5 000 000 ₽"
+    })
+    
+    return achievements
+
+def get_motivation_message(metrics):
+    """Возвращает мотивационное сообщение"""
+    pnl_pct = metrics['total_pnl_pct']
+    
+    if pnl_pct > 10:
+        return "🚀 Отличная работа! Ваш портфель показывает выдающиеся результаты!"
+    elif pnl_pct > 5:
+        return "📈 Превосходно! Вы на верном пути к финансовой свободе!"
+    elif pnl_pct > 0:
+        return "✅ Хороший результат! Продолжайте в том же духе!"
+    elif pnl_pct > -5:
+        return "💪 Небольшая просадка — это нормально. Долгосрочная стратегия важнее!"
+    elif pnl_pct > -10:
+        return "🛡️ Рынок штормит, но вы держитесь. Диверсификация — ваш щит!"
+    else:
+        return "🎓 Время учиться! Изучите стресс-тесты и оптимизируйте портфель."
+
+
+# ==================== САЙДБАР ====================
+
 with st.sidebar:
     st.title("Mini-Aladdin")
     st.markdown("---")
     
     page = st.radio(
         "Навигация",
-        ["Главная", "Позиции", "Стресс-тесты", "Прогноз цели"],
+        ["Главная", "Позиции", "Стресс-тесты", "Прогноз цели", "🎮 Достижения"],
         index=0
     )
     
@@ -178,12 +339,37 @@ with st.sidebar:
     st.caption(f"Цены обновлены: {price_update_time.strftime('%H:%M:%S')}")
     st.caption(f"Источник: MOEX ISS API")
     
+    # Показываем уровень в сайдбаре
+    level_name, next_level, _ = get_investor_level(metrics['total_value'])
+    st.caption(f"Ваш уровень: {level_name}")
+    
     if st.button("Обновить цены"):
         st.rerun()
 
 
+# ==================== ГЛАВНАЯ ====================
+
 if page == "Главная":
     st.title("Обзор портфеля")
+    
+    # Мотивационное сообщение
+    motivation = get_motivation_message(metrics)
+    st.info(motivation)
+    
+    # Уровень инвестора
+    level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown(f"### Ваш уровень: {level_name}")
+        progress_to_next = min(metrics['total_value'] / next_level, 1.0)
+        st.progress(progress_to_next)
+        st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+    
+    with col2:
+        st.markdown(f"<div class='level-badge'>{level_name}</div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -261,6 +447,8 @@ if page == "Главная":
     with col3:
         st.metric("Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
 
+
+# ==================== ПОЗИЦИИ ====================
 
 elif page == "Позиции":
     st.title("Управление позициями")
@@ -397,6 +585,8 @@ elif page == "Позиции":
             st.error("Введите тикер и название!")
 
 
+# ==================== СТРЕСС-ТЕСТЫ ====================
+
 elif page == "Стресс-тесты":
     st.title("Стресс-тестирование")
     
@@ -452,6 +642,8 @@ elif page == "Стресс-тесты":
     st.dataframe(pd.DataFrame(scenario_data), use_container_width=True, hide_index=True)
 
 
+# ==================== ПРОГНОЗ ЦЕЛИ ====================
+
 elif page == "Прогноз цели":
     st.title("Прогноз достижения цели")
     
@@ -503,3 +695,56 @@ elif page == "Прогноз цели":
     if len(df_forecast) > 0:
         best = df_forecast.iloc[0]
         st.success(f"**Лучший выбор:** {best['Облигация']} — {best['Лет до цели']:.1f} лет")
+
+
+# ==================== ДОСТИЖЕНИЯ ====================
+
+elif page == "🎮 Достижения":
+    st.title("🎮 Ваши достижения")
+    
+    # Уровень инвестора
+    level_name, next_level, level_msg = get_investor_level(metrics['total_value'])
+    
+    st.markdown(f"## Ваш уровень: {level_name}")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        progress_to_next = min(metrics['total_value'] / next_level, 1.0)
+        st.progress(progress_to_next)
+        st.caption(f"{level_msg}: {next_level - metrics['total_value']:,.0f} ₽")
+    
+    with col2:
+        st.markdown(f"<div class='level-badge'>{level_name}</div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Статистика
+    st.subheader("📊 Статистика")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Всего в портфеле", f"{metrics['total_value']:,.0f} ₽")
+    
+    with col2:
+        st.metric("Общий P&L", f"{metrics['total_pnl']:+,.0f} ₽")
+    
+    with col3:
+        st.metric("Количество облигаций", len(st.session_state.positions))
+    
+    with col4:
+        achievements = get_achievements(metrics)
+        unlocked = sum(1 for a in achievements if a['unlocked'])
+        st.metric("Достижений", f"{unlocked}/{len(achievements)}")
+    
+    st.markdown("---")
+    
+    # Достижения
+    st.subheader("🏆 Достижения")
+    
+    achievements = get_achievements(metrics)
+    
+    col1, col2 = st.columns(2)
+    
+    for i, achievement in enumerate(achie
