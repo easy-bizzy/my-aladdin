@@ -69,8 +69,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# БЕЗ КЭША — цены обновляются при каждом открытии!
 def get_moex_prices(tickers):
+    """Получает цены с MOEX для списка тикеров"""
     prices = {}
     base_url = "https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities"
     
@@ -100,9 +100,9 @@ def get_moex_prices(tickers):
                 if val is not None:
                     price = val
             
-            if price is None and 'LASTTOPREVPRICE' in columns:
-                ltp_idx = columns.index('LASTTOPREVPRICE')
-                val = rows[0][ltp_idx]
+            if price is None and 'WAPRICE' in columns:
+                wap_idx = columns.index('WAPRICE')
+                val = rows[0][wap_idx]
                 if val is not None:
                     price = val
             
@@ -114,17 +114,17 @@ def get_moex_prices(tickers):
     return prices
 
 
+# ПРАВИЛЬНЫЕ ТИКЕРЫ!
 if 'positions' not in st.session_state:
     st.session_state.positions = [
         {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2},
-        {'ticker': 'SU26246RMFS5', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6},
-        {'ticker': 'SU26247RMFS1', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08},
-        {'ticker': 'SU26248RMFS9', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2},
-        {'ticker': 'SU26254RMFS6', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06}
+        {'ticker': 'SU26246RMFS7', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6},
+        {'ticker': 'SU26247RMFS5', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08},
+        {'ticker': 'SU26248RMFS3', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2},
+        {'ticker': 'SU26254RMFS1', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06}
     ]
 
 
-# Получаем цены БЕЗ кэша — всегда свежие!
 tickers = [pos['ticker'] for pos in st.session_state.positions]
 live_prices = get_moex_prices(tickers)
 price_update_time = datetime.now()
@@ -202,7 +202,6 @@ if page == "Главная":
     
     st.markdown("---")
     
-    # ТАБЛИЦА ЦЕН — чтобы было понятно, что это цена, а не P&L
     st.subheader("Текущие цены облигаций")
     price_df = metrics['details'][['short_name', 'buy_price', 'current_price', 'pnl']].copy()
     price_df.columns = ['Облигация', 'Цена покупки %', 'Текущая цена %', 'P&L (₽)']
@@ -226,11 +225,10 @@ if page == "Главная":
     with col2:
         st.subheader("P&L по позициям (в рублях)")
         try:
-            # ГОРИЗОНТАЛЬНЫЙ график — все ОФЗ видны!
             colors = ['rgb(46, 204, 113)' if x > 0 else 'rgb(231, 76, 60)' 
                       for x in metrics['details']['pnl']]
             fig_bar = go.Figure(go.Bar(
-                y=metrics['details']['short_name'],  # ГОРИЗОНТАЛЬНО!
+                y=metrics['details']['short_name'],
                 x=metrics['details']['pnl'],
                 marker_color=colors,
                 text=metrics['details']['pnl'].apply(lambda x: f"{x:+,.0f} ₽"),
