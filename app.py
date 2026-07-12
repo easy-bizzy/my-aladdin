@@ -310,7 +310,7 @@ with st.sidebar:
 # ==================== ГЛАВНАЯ ====================
 
 if page == "Главная":
-    st.title("💼 Обзор портфеля")
+    st.title(" Обзор портфеля")
     level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
     stars_count, star_icon = get_star_level(metrics['annual_coupon'])
     
@@ -326,39 +326,106 @@ if page == "Главная":
         st.markdown(f'<div class="stars-display">{star_icon} {stars_count} звезд</div>', unsafe_allow_html=True)
     
     st.markdown("---")
+    
+    # Счетчик обратного отсчета
+    target_date = datetime(2031, 12, 31)
+    today = datetime.now()
+    
+    if today >= target_date:
+        countdown_text = " Время пришло!"
+    else:
+        delta = target_date - today
+        total_days = delta.days
+        
+        years_left = target_date.year - today.year
+        months_left = target_date.month - today.month
+        days_left = target_date.day - today.day
+        
+        if days_left < 0:
+            months_left -= 1
+            prev_month = target_date.month - 1 if target_date.month > 1 else 12
+            prev_year = target_date.year if target_date.month > 1 else target_date.year - 1
+            if prev_month in [1, 3, 5, 7, 8, 10, 12]:
+                days_in_prev = 31
+            elif prev_month in [4, 6, 9, 11]:
+                days_in_prev = 30
+            else:
+                days_in_prev = 29 if (prev_year % 4 == 0 and (prev_year % 100 != 0 or prev_year % 400 == 0)) else 28
+            days_left += days_in_prev
+        
+        if months_left < 0:
+            years_left -= 1
+            months_left += 12
+        
+        time_parts = []
+        if years_left > 0:
+            time_parts.append(f"{years_left} г.")
+        if months_left > 0:
+            time_parts.append(f"{months_left} мес.")
+        if days_left > 0:
+            time_parts.append(f"{days_left} дн.")
+        
+        countdown_text = " ".join(time_parts) if time_parts else "0 дн."
+    
+    # 4 метрики: Стоимость, Доходность, Средний % годовых, Счетчик
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Стоимость", f"{metrics['total_value']:,.0f} ₽", f"{metrics['total_pnl']:+,.0f} ₽")
+        st.metric("💰 Стоимость", f"{metrics['total_value']:,.0f} ₽", f"{metrics['total_pnl']:+,.0f} ₽")
     with col2:
-        st.metric("Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
+        st.metric(" Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     with col3:
-        st.metric("Средний % годовых", f"{metrics['avg_annual_return']:.2f}%", "взвешенный")
+        st.metric("📊 Средний % годовых", f"{metrics['avg_annual_return']:.2f}%", "взвешенный")
     with col4:
-        st.metric("DV01", f"{metrics['dv01']:,.0f} ₽")
+        st.metric("⏰ До 31.12.2031", countdown_text, f"{total_days:,} дн.")
     
     st.markdown("---")
-    st.subheader(f"🎯 Цель: 10 000 000 ₽")
     
-    if months_to_target == 0:
-        st.success("🎉 Цель достигнута!")
+    # План накоплений
+    remaining = 10_000_000 - metrics['total_value']
+    total_months_left = years_left * 12 + months_left if today < target_date else 0
+    monthly_coupon_income = metrics['annual_coupon'] / 12
+    
+    if total_months_left > 0 and remaining > 0:
+        monthly_needed_with_coupons = max(0, (remaining - monthly_coupon_income * total_months_left) / total_months_left)
     else:
-        years_part = months_to_target // 12
-        months_part = months_to_target % 12
-        if years_part > 0:
-            time_text = f"{years_part} лет {months_part} мес"
-        else:
-            time_text = f"{months_part} месяцев"
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Осталось", f"{months_to_target} мес", time_text)
-        with col2:
-            st.metric("Купон в месяц", f"{monthly_coupon:,.0f} ₽")
-        with col3:
-            st.metric("Сейчас", f"{current_value:,.0f} ₽")
-        
-        st.progress(min(current_value / target_value, 1.0))
-        st.caption(f"{current_value:,.0f} ₽ из {target_value:,.0f} ₽ ({current_value/target_value*100:.1f}%)")
+        monthly_needed_with_coupons = 0
+    
+    progress = min(metrics['total_value'] / 10_000_000, 1.0)
+    
+    st.subheader(f"🎯 Цель: 10 000 000 ₽ к 31.12.2031")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Текущая стоимость", f"{metrics['total_value']:,.0f} ₽")
+    with col2:
+        st.metric("Осталось накопить", f"{remaining:,.0f} ₽")
+    with col3:
+        st.metric("Прогресс", f"{progress*100:.1f}%")
+    
+    st.progress(progress)
+    
+    st.markdown("")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Без пополнений")
+        st.info(f"""
+        - Текущий портфель: **{metrics['total_value']:,.0f} ₽**
+        - Купоны за {total_months_left} мес: **+{monthly_coupon_income * total_months_left:,.0f} ₽**
+        - Итого к 2031: **{metrics['total_value'] + monthly_coupon_income * total_months_left:,.0f} ₽**
+        - До цели: **{10_000_000 - (metrics['total_value'] + monthly_coupon_income * total_months_left):,.0f} ₽**
+        """)
+    
+    with col2:
+        st.markdown("#### С пополнениями")
+        st.success(f"""
+        - Нужно откладывать: **{monthly_needed_with_coupons:,.0f} ₽/мес**
+        - С учетом купонов
+        - К 2031 будет: **~10 000 000 ₽** ✅
+        """)
+    
+    st.caption(f" Купонный доход: {monthly_coupon_income:,.0f} ₽/мес | {metrics['annual_coupon']:,.0f} ₽/год")
     
     st.markdown("---")
     st.subheader("Текущие позиции")
@@ -394,6 +461,7 @@ if page == "Главная":
         st.metric("Купон в месяц", f"{metrics['annual_coupon']/12:,.0f} ₽")
     with col3:
         st.metric("Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
+
 
 # ==================== ПОЗИЦИИ ====================
 
