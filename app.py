@@ -629,16 +629,30 @@ elif page == "Прогноз цели":
 
 elif page == "Импорт из брокера":
     st.title("📥 Импорт данных из брокера")
-    st.markdown("""
-    ### Поддерживаемые форматы:
-    - **CSV** — лучший вариант ✅
-    - **HTML** — отчеты Тинькофф, Сбер, ВТБ
-    - **Excel (XLSX)** — если экспортировали из Excel
     
-    ### Как работает импорт:
+    # Кнопка сброса портфеля
+    st.warning("⚠️ Если данные испортились — нажмите кнопку ниже для восстановления")
+    if st.button("🔄 Сбросить портфель к исходным данным", type="secondary"):
+        st.session_state.positions = [
+            {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2, 'maturity_years': 15},
+            {'ticker': 'SU26246RMFS7', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6, 'maturity_years': 8},
+            {'ticker': 'SU26247RMFS5', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08, 'maturity_years': 8},
+            {'ticker': 'SU26248RMFS3', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2, 'maturity_years': 9},
+            {'ticker': 'SU26254RMFS1', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06, 'maturity_years': 10}
+        ]
+        st.success("✅ Портфель восстановлен!")
+        st.rerun()
+    
+    st.markdown("---")
+    st.markdown("""
+    ### Как импортировать CSV из брокера:
     1. Загрузите файл
-    2. Укажите **номера колонок** (0, 1, 2...)
-    3. Нажмите "Применить импорт"
+    2. Укажите номера колонок
+    3. **Важно:** укажите диапазон строк (пропустите заголовки и итоги)
+    4. Нажмите "Применить импорт"
+    
+    ### Фильтр:
+    Импорт берутся только строки где тикер содержит **ОФЗ** или **SU** или номер облигации (26XXX)
     """)
     st.markdown("---")
     
@@ -679,59 +693,98 @@ elif page == "Импорт из брокера":
                 st.success(f"✅ Excel файл загружен! Найдено {len(df_import)} записей")
             
             if df_import is not None and len(df_import) > 0:
-                # ✅ НОВОЕ: показываем превью с НОМЕРАМИ колонок
-                st.subheader("Превью данных (с номерами колонок)")
-                
-                # Создаём копию для отображения с номерами колонок
-                df_preview = df_import.head(10).copy()
+                # Превью с номерами колонок
+                st.subheader("Превью данных")
+                df_preview = df_import.head(20).copy()
                 df_preview.columns = [f"Колонка {i}: {col}" for i, col in enumerate(df_import.columns)]
                 st.dataframe(df_preview, use_container_width=True)
                 
                 st.markdown("---")
-                st.subheader("Выбор колонок по номеру")
-                st.info("Укажите номера колонок (начинаются с 0)")
+                st.subheader("Настройки импорта")
                 
                 num_cols = len(df_import.columns)
+                num_rows = len(df_import)
                 col_options = list(range(num_cols))
+                row_options = list(range(num_rows))
+                
+                st.info(f"Всего строк в файле: {num_rows}")
                 
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    ticker_col_idx = st.selectbox("Колонка с тикером/названием", col_options, key="ticker_col_idx")
+                    ticker_col_idx = st.selectbox("Колонка с тикером", col_options, key="ticker_col_idx")
                 with col2:
-                    date_col_idx = st.selectbox("Колонка с датой", col_options, key="date_col_idx")
-                with col3:
                     qty_col_idx = st.selectbox("Колонка с количеством", col_options, key="qty_col_idx")
-                with col4:
+                with col3:
                     price_col_idx = st.selectbox("Колонка с ценой", col_options, key="price_col_idx")
+                with col4:
+                    date_col_idx = st.selectbox("Колонка с датой (опционально)", col_options, key="date_col_idx")
                 
-                # Показываем что выбрано
-                st.markdown(f"""
-                **Выбрано:**
-                - Тикер: колонка {ticker_col_idx} ({df_import.columns[ticker_col_idx]})
-                - Дата: колонка {date_col_idx} ({df_import.columns[date_col_idx]})
-                - Количество: колонка {qty_col_idx} ({df_import.columns[qty_col_idx]})
-                - Цена: колонка {price_col_idx} ({df_import.columns[price_col_idx]})
-                """)
+                # Диапазон строк
+                st.markdown("**Диапазон строк для импорта:**")
+                col_start, col_end = st.columns(2)
+                with col_start:
+                    start_row = st.number_input("Начальная строка", min_value=0, max_value=num_rows-1, value=0, key="start_row")
+                with col_end:
+                    end_row = st.number_input("Конечная строка", min_value=0, max_value=num_rows-1, value=num_rows-1, key="end_row")
+                
+                # Фильтр по тикеру
+                st.markdown("**Фильтр по тикеру:**")
+                filter_ofz = st.checkbox("Только ОФЗ (содержит 'ОФЗ' или 'SU')", value=True, key="filter_ofz")
+                filter_pattern = st.checkbox("Только номера облигаций (26XXX)", value=True, key="filter_pattern")
+                
+                # Показываем что будет импортировано
+                st.markdown("---")
+                st.subheader("Предварительный просмотр импорта")
+                
+                df_test = df_import.iloc[start_row:end_row+1].copy()
+                tickers_test = df_test.iloc[:, ticker_col_idx].astype(str).str.strip()
+                
+                if filter_ofz:
+                    mask_ofz = tickers_test.str.contains('ОФЗ|SU|su|ofz', case=False, na=False)
+                    df_test = df_test[mask_ofz]
+                
+                if filter_pattern:
+                    tickers_test2 = df_test.iloc[:, ticker_col_idx].astype(str)
+                    mask_pattern = tickers_test2.str.contains(r'26\d{3}', na=False)
+                    df_test = df_test[mask_pattern]
+                
+                if len(df_test) > 0:
+                    st.success(f"✅ Будет импортировано строк: {len(df_test)}")
+                    st.dataframe(df_test.head(10), use_container_width=True)
+                else:
+                    st.warning("⚠️ Нет строк для импорта с выбранными фильтрами. Попробуйте отключить фильтры или изменить диапазон.")
                 
                 if st.button("Применить импорт", type="primary"):
-                    # ✅ НОВОЕ: работаем через iloc (по индексам), а не по именам
-                    df_filtered = df_import.copy()
+                    df_filtered = df_import.iloc[start_row:end_row+1].copy()
                     
-                    # Берём данные по индексам колонок
                     tickers = df_filtered.iloc[:, ticker_col_idx].astype(str).str.strip()
                     qtys_raw = df_filtered.iloc[:, qty_col_idx]
                     prices_raw = df_filtered.iloc[:, price_col_idx]
                     
-                    # ✅ Функция очистки чисел от текста
+                    # Фильтрация
+                    if filter_ofz:
+                        mask_ofz = tickers.str.contains('ОФЗ|SU|su|ofz', case=False, na=False)
+                        df_filtered = df_filtered[mask_ofz]
+                        tickers = tickers[mask_ofz]
+                        qtys_raw = qtys_raw[mask_ofz]
+                        prices_raw = prices_raw[mask_ofz]
+                    
+                    if filter_pattern:
+                        mask_pattern = tickers.str.contains(r'26\d{3}', na=False)
+                        df_filtered = df_filtered[mask_pattern]
+                        tickers = tickers[mask_pattern]
+                        qtys_raw = qtys_raw[mask_pattern]
+                        prices_raw = prices_raw[mask_pattern]
+                    
                     def clean_number(val):
                         if pd.isna(val):
                             return 0.0
                         s = str(val)
-                        # Убираем пробелы (включая неразрывные)
+                        # Убираем пробелы и неразрывные пробелы
                         s = s.replace(' ', '').replace('\u00a0', '')
-                        # Убираем символы валют и ₽
-                        s = s.replace('₽', '').replace('руб', '').replace('RUB', '').replace('$', '')
-                        # Заменяем запятую на точку (для дробных)
+                        # Убираем символы валют
+                        s = s.replace('₽', '').replace('руб', '').replace('RUB', '').replace('$', '').replace('₽', '')
+                        # Заменяем запятую на точку
                         s = s.replace(',', '.')
                         # Убираем всё кроме цифр, точки и минуса
                         s = ''.join(c for c in s if c.isdigit() or c in '.-')
@@ -743,14 +796,12 @@ elif page == "Импорт из брокера":
                     qtys = qtys_raw.apply(clean_number)
                     prices = prices_raw.apply(clean_number)
                     
-                    # Создаём DataFrame для группировки
                     df_clean = pd.DataFrame({
                         'ticker': tickers,
                         'qty': qtys,
                         'price': prices
                     })
                     
-                    # Группируем по тикеру
                     grouped = df_clean.groupby('ticker').agg({
                         'qty': 'sum',
                         'price': 'mean'
@@ -765,8 +816,12 @@ elif page == "Импорт из брокера":
                         qty = int(float(row['qty']))
                         price = float(row['price'])
                         
-                        # Пропускаем пустые
-                        if not ticker or ticker == 'nan' or ticker == '' or qty == 0:
+                        if not ticker or ticker == 'nan' or ticker == '' or qty == 0 or price == 0:
+                            skipped_count += 1
+                            continue
+                        
+                        # Проверка что цена разумная (не больше 200%)
+                        if price > 200:
                             skipped_count += 1
                             continue
                         
