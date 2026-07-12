@@ -634,6 +634,13 @@ elif page == "Импорт из брокера":
     - **HTML** — отчеты Тинькофф, Сбер, ВТБ
     - **CSV** — универсальный формат
     - **Excel (XLSX)** — если экспортировали из Excel
+    
+    ### Если импорт не работает:
+    1. Откройте HTML файл в браузере
+    2. Скопируйте таблицу с данными
+    3. Вставьте в Excel
+    4. Сохраните как CSV
+    5. Загрузите CSV файл
     """)
     st.markdown("---")
     
@@ -645,13 +652,28 @@ elif page == "Импорт из брокера":
             file_name = uploaded_file.name.lower()
             
             if file_name.endswith(('.html', '.htm')):
+                # Читаем все таблицы из HTML
                 html_content = uploaded_file.read().decode('utf-8', errors='ignore')
                 tables = pd.read_html(html_content)
+                
+                # Ищем таблицу с наибольшим количеством данных
                 if len(tables) > 0:
-                    df_import = tables[0]
-                    st.success(f"✅ HTML файл обработан! Найдено {len(df_import)} записей")
+                    # Выбираем таблицу с максимальным количеством строк
+                    max_rows = 0
+                    best_table_idx = 0
+                    for i, table in enumerate(tables):
+                        if len(table) > max_rows:
+                            max_rows = len(table)
+                            best_table_idx = i
+                    
+                    df_import = tables[best_table_idx].copy()
+                    st.success(f"✅ HTML файл обработан! Найдено {len(tables)} таблиц, используем таблицу с {len(df_import)} записями")
+                    
+                    # Переименовываем колонки чтобы избежать конфликтов
+                    df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
                 else:
                     st.error("❌ В HTML файле не найдены таблицы")
+                    
             elif file_name.endswith('.csv'):
                 try:
                     df_import = pd.read_csv(uploaded_file, sep=';', encoding='utf-8')
@@ -660,9 +682,14 @@ elif page == "Импорт из брокера":
                         df_import = pd.read_csv(uploaded_file, sep=',', encoding='utf-8')
                     except:
                         df_import = pd.read_csv(uploaded_file, sep='\t', encoding='utf-8')
+                
+                # Переименовываем колонки
+                df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ CSV файл загружен! Найдено {len(df_import)} записей")
+                
             elif file_name.endswith(('.xlsx', '.xls')):
                 df_import = pd.read_excel(uploaded_file)
+                df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ Excel файл загружен! Найдено {len(df_import)} записей")
             
             if df_import is not None and len(df_import) > 0:
@@ -670,24 +697,31 @@ elif page == "Импорт из брокера":
                 st.dataframe(df_import.head(10), use_container_width=True)
                 st.markdown("---")
                 st.subheader("Сопоставление колонок")
+                st.info("Выберите колонки из файла:")
+                
+                col_names = df_import.columns.tolist()
+                
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    ticker_col = st.selectbox("Тикер/Название", df_import.columns.tolist(), key="ticker_col")
+                    ticker_col = st.selectbox("Колонка с тикером/названием", col_names, key="ticker_col")
                 with col2:
-                    date_col = st.selectbox("Дата", df_import.columns.tolist(), key="date_col")
+                    date_col = st.selectbox("Колонка с датой", col_names, key="date_col")
                 with col3:
-                    qty_col = st.selectbox("Количество", df_import.columns.tolist(), key="qty_col")
+                    qty_col = st.selectbox("Колонка с количеством", col_names, key="qty_col")
                 with col4:
-                    price_col = st.selectbox("Цена", df_import.columns.tolist(), key="price_col")
+                    price_col = st.selectbox("Колонка с ценой", col_names, key="price_col")
                 
                 if st.button("Применить импорт", type="primary"):
                     df_filtered = df_import.copy()
+                    
+                    # Преобразуем в строки и очищаем
                     df_filtered[ticker_col] = df_filtered[ticker_col].astype(str).str.strip()
                     
-                    # ✅ ИСПРАВЛЕНИЕ: преобразуем в числа
+                    # Преобразуем в числа (исправление ошибки dtype)
                     df_filtered[qty_col] = pd.to_numeric(df_filtered[qty_col], errors='coerce').fillna(0)
                     df_filtered[price_col] = pd.to_numeric(df_filtered[price_col], errors='coerce').fillna(0)
                     
+                    # Группируем по тикеру
                     grouped = df_filtered.groupby(ticker_col).agg({
                         qty_col: 'sum',
                         price_col: 'mean'
@@ -695,10 +729,16 @@ elif page == "Импорт из брокера":
                     
                     updated_count = 0
                     added_count = 0
+                    
                     for _, row in grouped.iterrows():
                         ticker = str(row[ticker_col]).strip()
                         qty = int(float(row[qty_col]))
                         price = float(row[price_col])
+                        
+                        # Пропускаем пустые строки
+                        if not ticker or ticker == 'nan' or qty == 0:
+                            continue
+                        
                         found = False
                         for pos in st.session_state.positions:
                             if pos['ticker'] == ticker or ticker in pos['ticker'] or pos['ticker'] in ticker:
@@ -707,21 +747,30 @@ elif page == "Импорт из брокера":
                                 found = True
                                 updated_count += 1
                                 break
+                        
                         if not found:
                             short_name = ticker
                             match = re.search(r'26\d{3}', ticker)
                             if match:
                                 short_name = f"ОФЗ {match.group()}"
                             st.session_state.positions.append({
-                                'ticker': ticker, 'short_name': short_name, 'qty': qty,
-                                'buy_price': price, 'coupon_rate': 0.10, 'duration': 5.0, 
-                                'current_price': price, 'maturity_years': 5
+                                'ticker': ticker,
+                                'short_name': short_name,
+                                'qty': qty,
+                                'buy_price': price,
+                                'coupon_rate': 0.10,
+                                'duration': 5.0,
+                                'current_price': price,
+                                'maturity_years': 5
                             })
                             added_count += 1
+                    
                     st.success(f"✅ Импорт завершен! Обновлено: {updated_count}, Добавлено: {added_count}")
                     st.rerun()
+                    
         except Exception as e:
             st.error(f"❌ Ошибка обработки файла: {e}")
+            st.info("Попробуйте конвертировать файл в CSV через Excel")
     
     st.markdown("---")
     st.subheader("Ручное обновление цен покупки")
