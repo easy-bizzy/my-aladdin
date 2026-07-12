@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import requests
 from datetime import datetime, timedelta
 import re
+import time
 
 st.set_page_config(page_title="Mini-Aladdin", page_icon="📊", layout="wide")
 
@@ -57,6 +58,45 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== НАСТРОЙКИ JSONBIN ====================
+
+try:
+    JSONBIN_BIN_ID = st.secrets["JSONBIN_BIN_ID"]
+    JSONBIN_API_KEY = st.secrets["JSONBIN_API_KEY"]
+    JSONBIN_URL = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+    CLOUD_ENABLED = True
+except:
+    CLOUD_ENABLED = False
+    st.sidebar.warning("⚠️ JSONBin не настроен. Данные не сохраняются в облаке.")
+
+def load_from_cloud():
+    if not CLOUD_ENABLED:
+        return None
+    try:
+        headers = {"X-Master-Key": JSONBIN_API_KEY}
+        response = requests.get(f"{JSONBIN_URL}/latest", headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if 'record' in data:
+                return data['record']
+            return data
+    except:
+        pass
+    return None
+
+def save_to_cloud(positions):
+    if not CLOUD_ENABLED:
+        return False
+    try:
+        headers = {
+            "X-Master-Key": JSONBIN_API_KEY,
+            "Content-Type": "application/json"
+        }
+        response = requests.put(JSONBIN_URL, json=positions, headers=headers, timeout=10)
+        return response.status_code == 200
+    except:
+        return False
+
 # ==================== ФУНКЦИИ ====================
 
 def get_moex_prices(tickers):
@@ -86,39 +126,19 @@ def get_moex_prices(tickers):
             prices[ticker] = None
     return prices
 
-# ИСПРАВЛЕННЫЕ ДАТЫ И СУММЫ КУПОНОВ
 def get_coupon_dates(ticker, coupon_rate, qty, face_value=1000):
-    # Точные даты и суммы купонов от пользователя
     coupon_schedule = {
-        'SU26238RMFS4': {
-            'dates': [(12, 2), (6, 2)],  # 2 декабря, 2 июня
-            'amount_per_bond': 35.4  # 1451.4 / 41
-        },
-        'SU26246RMFS7': {
-            'dates': [(9, 23), (3, 23)],  # 23 сентября, 23 марта
-            'amount_per_bond': 59.84  # 3889.6 / 65
-        },
-        'SU26247RMFS5': {
-            'dates': [(11, 25), (5, 25)],  # 25 ноября, 25 мая
-            'amount_per_bond': 61.08  # 9100.92 / 149
-        },
-        'SU26248RMFS3': {
-            'dates': [(12, 2), (6, 2)],  # 2 декабря, 2 июня
-            'amount_per_bond': 61.08  # 10627.92 / 174
-        },
-        'SU26254RMFS1': {
-            'dates': [(10, 21), (4, 21)],  # 21 октября, 21 апреля
-            'amount_per_bond': 64.82  # 16205 / 250
-        }
+        'SU26238RMFS4': {'dates': [(12, 2), (6, 2)], 'amount_per_bond': 35.4},
+        'SU26246RMFS7': {'dates': [(9, 23), (3, 23)], 'amount_per_bond': 59.84},
+        'SU26247RMFS5': {'dates': [(11, 25), (5, 25)], 'amount_per_bond': 61.08},
+        'SU26248RMFS3': {'dates': [(12, 2), (6, 2)], 'amount_per_bond': 61.08},
+        'SU26254RMFS1': {'dates': [(10, 21), (4, 21)], 'amount_per_bond': 64.82}
     }
-    
     if ticker not in coupon_schedule:
         return []
-    
     schedule = coupon_schedule[ticker]
     today = datetime.now()
     coupons = []
-    
     for year_offset in range(2):
         for month, day in schedule['dates']:
             coupon_date = datetime(today.year + year_offset, month, day)
@@ -128,7 +148,6 @@ def get_coupon_dates(ticker, coupon_rate, qty, face_value=1000):
                     'amount': schedule['amount_per_bond'] * qty,
                     'ticker': ticker
                 })
-    
     return sorted(coupons, key=lambda x: x['date'])[:4]
 
 def get_investor_level(total_value):
@@ -137,7 +156,7 @@ def get_investor_level(total_value):
     elif total_value < 750_000:
         return "🟢 Эпик", "level-badge-epic", 750_000, "До Легенды"
     elif total_value < 1_000_000:
-        return "👑 Легенда", "level-badge-legend", 1_000_000, "До Мифического"
+        return " Легенда", "level-badge-legend", 1_000_000, "До Мифического"
     elif total_value < 2_500_000:
         return "🔮 Мифический", "level-badge-mythic", 2_500_000, "До Чести"
     elif total_value < 5_000_000:
@@ -161,7 +180,7 @@ def get_star_level(annual_coupon):
 
 def get_achievements(metrics):
     return [
-        {'name': 'Первые шаги', 'icon': '', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
+        {'name': 'Первые шаги', 'icon': '👶', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
         {'name': 'Сотня', 'icon': '💰', 'description': '100 000 ₽', 'unlocked': metrics['total_value'] >= 100_000, 'condition': f"{metrics['total_value']:,.0f} / 100 000"},
         {'name': 'Полмиллиона', 'icon': '💎', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
         {'name': 'Миллионер', 'icon': '🤑', 'description': '1 000 000 ₽', 'unlocked': metrics['total_value'] >= 1_000_000, 'condition': f"{metrics['total_value']:,.0f} / 1 000 000"},
@@ -185,7 +204,11 @@ DEFAULT_POSITIONS = [
 ]
 
 if 'positions' not in st.session_state or len(st.session_state.positions) == 0:
-    st.session_state.positions = [p.copy() for p in DEFAULT_POSITIONS]
+    cloud_data = load_from_cloud()
+    if cloud_data and len(cloud_data) > 0:
+        st.session_state.positions = cloud_data
+    else:
+        st.session_state.positions = [p.copy() for p in DEFAULT_POSITIONS]
 
 tickers = [pos['ticker'] for pos in st.session_state.positions]
 live_prices = get_moex_prices(tickers)
@@ -209,6 +232,11 @@ def calculate_metrics(positions):
     weighted_duration = (df['weight'] * df['duration']).sum()
     dv01 = total_value * weighted_duration * 0.0001
     annual_coupon = (df['qty'] * 1000 * df['coupon_rate']).sum()
+    avg_annual_return = 0
+    if total_value > 0:
+        for _, row in df.iterrows():
+            weight = row['market_value'] / total_value
+            avg_annual_return += weight * row['coupon_rate'] * 100
     return {
         'total_value': total_value,
         'cost_basis': df['cost_basis'].sum(),
@@ -217,10 +245,21 @@ def calculate_metrics(positions):
         'weighted_duration': weighted_duration,
         'dv01': dv01,
         'annual_coupon': annual_coupon,
+        'avg_annual_return': avg_annual_return,
         'details': df
     }
 
 metrics = calculate_metrics(st.session_state.positions)
+
+target_value = 10_000_000
+current_value = metrics['total_value']
+monthly_coupon = metrics['annual_coupon'] / 12
+
+if current_value >= target_value:
+    months_to_target = 0
+else:
+    remaining = target_value - current_value
+    months_to_target = int(np.ceil(remaining / monthly_coupon)) if monthly_coupon > 0 else 999
 
 # ==================== САЙДБАР ====================
 
@@ -235,10 +274,36 @@ with st.sidebar:
     stars_count, star_icon = get_star_level(metrics['annual_coupon'])
     if stars_count > 0:
         st.caption(f"Звезды: {star_icon} {stars_count}")
+    
+    st.markdown("---")
+    st.subheader("💾 Облако")
+    
+    if CLOUD_ENABLED:
+        if st.button("💾 Сохранить в облако", type="primary", use_container_width=True):
+            if save_to_cloud(st.session_state.positions):
+                st.success("✅ Сохранено!")
+                st.balloons()
+            else:
+                st.error("❌ Ошибка")
+        
+        if st.button("🔄 Загрузить из облака"):
+            cloud_data = load_from_cloud()
+            if cloud_data and len(cloud_data) > 0:
+                st.session_state.positions = cloud_data
+                st.success("✅ Загружено!")
+                st.rerun()
+            else:
+                st.error("❌ Не удалось")
+        
+        st.caption(f"Bin: {JSONBIN_BIN_ID[:8]}...")
+    else:
+        st.warning("JSONBin не настроен")
+    
     if st.button("🔄 Сбросить портфель"):
         st.session_state.positions = [p.copy() for p in DEFAULT_POSITIONS]
         st.success("✅ Сброшено! Обновите страницу (F5)")
         st.stop()
+    
     if st.button("Обновить цены"):
         st.rerun()
 
@@ -267,9 +332,33 @@ if page == "Главная":
     with col2:
         st.metric("Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     with col3:
-        st.metric("Дюрация", f"{metrics['weighted_duration']:.2f} лет")
+        st.metric("Средний % годовых", f"{metrics['avg_annual_return']:.2f}%", "взвешенный")
     with col4:
         st.metric("DV01", f"{metrics['dv01']:,.0f} ₽")
+    
+    st.markdown("---")
+    st.subheader(f"🎯 Цель: 10 000 000 ₽")
+    
+    if months_to_target == 0:
+        st.success("🎉 Цель достигнута!")
+    else:
+        years_part = months_to_target // 12
+        months_part = months_to_target % 12
+        if years_part > 0:
+            time_text = f"{years_part} лет {months_part} мес"
+        else:
+            time_text = f"{months_part} месяцев"
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Осталось", f"{months_to_target} мес", time_text)
+        with col2:
+            st.metric("Купон в месяц", f"{monthly_coupon:,.0f} ₽")
+        with col3:
+            st.metric("Сейчас", f"{current_value:,.0f} ₽")
+        
+        st.progress(min(current_value / target_value, 1.0))
+        st.caption(f"{current_value:,.0f} ₽ из {target_value:,.0f} ₽ ({current_value/target_value*100:.1f}%)")
     
     st.markdown("---")
     st.subheader("Текущие позиции")
@@ -296,11 +385,6 @@ if page == "Главная":
             st.plotly_chart(fig, use_container_width=True)
         except:
             st.info("График недоступен")
-    
-    st.markdown("---")
-    st.subheader("Прогресс к цели 10 000 000 ₽")
-    st.progress(min(metrics['total_value'] / 10_000_000, 1.0))
-    st.caption(f"{metrics['total_value']:,.0f} ₽ ({metrics['total_value']/10_000_000*100:.1f}%)")
     
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
@@ -340,17 +424,17 @@ elif page == "Позиции":
         with col3:
             new_mat = st.number_input("Лет до погашения", value=int(pos.get('maturity_years', 5)), key=f"mat_{idx}")
         
-        if st.button("💾 Сохранить"):
+        if st.button(" Сохранить"):
             st.session_state.positions[idx] = {
                 'ticker': new_ticker, 'short_name': new_name, 'qty': int(new_qty),
                 'buy_price': float(new_buy), 'coupon_rate': float(new_coupon)/100,
                 'duration': float(new_dur), 'maturity_years': int(new_mat),
                 'current_price': pos['current_price']
             }
-            st.success("✅ Сохранено!")
+            st.success("✅ Сохранено! Не забудьте сохранить в облако в сайдбаре")
             st.rerun()
         
-        if st.button("🗑️ Удалить"):
+        if st.button("️ Удалить"):
             st.session_state.positions.pop(idx)
             st.success("✅ Удалено!")
             st.rerun()
@@ -376,7 +460,7 @@ elif page == "Позиции":
                 'duration': float(add_dur), 'maturity_years': int(add_mat),
                 'current_price': float(add_buy)
             })
-            st.success("✅ Добавлено!")
+            st.success("✅ Добавлено! Не забудьте сохранить в облако")
             st.rerun()
 
 # ==================== КУПОННЫЙ КАЛЕНДАРЬ ====================
@@ -384,23 +468,19 @@ elif page == "Позиции":
 elif page == "Купонный календарь":
     st.title("📅 Купонный календарь")
     
-    # Плашки доходов
     st.subheader("💰 Доходы")
     
     annual_coupon = metrics['annual_coupon']
     current_value = metrics['total_value']
     
-    # Расчет с реинвестированием (сложный процент)
     with_reinvest_1y = current_value * (1 + annual_coupon/current_value) ** 1 - current_value
     with_reinvest_5y = current_value * (1 + annual_coupon/current_value) ** 5 - current_value
     with_reinvest_10y = current_value * (1 + annual_coupon/current_value) ** 10 - current_value
     
-    # Без реинвестирования (простой процент)
     without_reinvest_1y = annual_coupon * 1
     without_reinvest_5y = annual_coupon * 5
     without_reinvest_10y = annual_coupon * 10
     
-    # До погашения (среднее 10 лет)
     avg_maturity = np.mean([p.get('maturity_years', 5) for p in st.session_state.positions])
     with_reinvest_maturity = current_value * (1 + annual_coupon/current_value) ** avg_maturity - current_value
     without_reinvest_maturity = annual_coupon * avg_maturity
@@ -423,7 +503,6 @@ elif page == "Купонный календарь":
     
     st.markdown("---")
     
-    # График с ползунками
     st.subheader("📈 Моделирование роста портфеля")
     
     col1, col2, col3 = st.columns(3)
@@ -434,82 +513,44 @@ elif page == "Купонный календарь":
     with col3:
         annual_return = st.slider("Годовая доходность (%)", 0.0, 30.0, 12.0, 0.5)
     
-    # Расчет трех сценариев
     months = years * 12
     monthly_rate = annual_return / 100 / 12
     
-    # Сценарий 1: С реинвестированием + пополнение
     values_with_reinvest = [current_value]
     for m in range(months):
         new_value = values_with_reinvest[-1] * (1 + monthly_rate) + monthly_investment
         values_with_reinvest.append(new_value)
     
-    # Сценарий 2: Только пополнение без доходности
     values_no_return = [current_value]
     for m in range(months):
         new_value = values_no_return[-1] + monthly_investment
         values_no_return.append(new_value)
     
-    # Сценарий 3: Ничего не делать (только доходность без пополнения)
     values_no_action = [current_value]
     for m in range(months):
         new_value = values_no_action[-1] * (1 + monthly_rate)
         values_no_action.append(new_value)
     
-    # График
     fig = go.Figure()
-    
     months_list = list(range(months + 1))
     
-    fig.add_trace(go.Scatter(
-        x=months_list,
-        y=values_with_reinvest,
-        mode='lines',
-        name='С реинвестированием + пополнение',
-        line=dict(color='rgb(46, 204, 113)', width=3)
-    ))
+    fig.add_trace(go.Scatter(x=months_list, y=values_with_reinvest, mode='lines', name='С реинвестированием + пополнение', line=dict(color='rgb(46, 204, 113)', width=3)))
+    fig.add_trace(go.Scatter(x=months_list, y=values_no_action, mode='lines', name='Только доходность', line=dict(color='rgb(52, 152, 219)', width=3)))
+    fig.add_trace(go.Scatter(x=months_list, y=values_no_return, mode='lines', name='Только пополнение', line=dict(color='rgb(231, 76, 60)', width=3)))
     
-    fig.add_trace(go.Scatter(
-        x=months_list,
-        y=values_no_action,
-        mode='lines',
-        name='Только доходность (без пополнения)',
-        line=dict(color='rgb(52, 152, 219)', width=3)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=months_list,
-        y=values_no_return,
-        mode='lines',
-        name='Только пополнение (без доходности)',
-        line=dict(color='rgb(231, 76, 60)', width=3)
-    ))
-    
-    fig.update_layout(
-        height=500,
-        template='plotly_white',
-        xaxis_title="Месяцы",
-        yaxis_title="Стоимость портфеля (₽)",
-        hovermode='x unified'
-    )
-    
+    fig.update_layout(height=500, template='plotly_white', xaxis_title="Месяцы", yaxis_title="Стоимость портфеля (₽)", hovermode='x unified')
     st.plotly_chart(fig, use_container_width=True)
     
-    # Итоговые значения
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("С реинвестированием + пополнение", f"{values_with_reinvest[-1]:,.0f} ₽", 
-                 f"{values_with_reinvest[-1] - current_value:+,.0f} ₽")
+        st.metric("С реинвестированием + пополнение", f"{values_with_reinvest[-1]:,.0f} ₽", f"{values_with_reinvest[-1] - current_value:+,.0f} ₽")
     with col2:
-        st.metric("Только доходность", f"{values_no_action[-1]:,.0f} ₽",
-                 f"{values_no_action[-1] - current_value:+,.0f} ₽")
+        st.metric("Только доходность", f"{values_no_action[-1]:,.0f} ₽", f"{values_no_action[-1] - current_value:+,.0f} ₽")
     with col3:
-        st.metric("Только пополнение", f"{values_no_return[-1]:,.0f} ₽",
-                 f"{values_no_return[-1] - current_value:+,.0f} ₽")
+        st.metric("Только пополнение", f"{values_no_return[-1]:,.0f} ₽", f"{values_no_return[-1] - current_value:+,.0f} ₽")
     
     st.markdown("---")
     
-    # Ближайшие выплаты
     st.subheader("📆 Ближайшие выплаты купонов")
     all_coupons = []
     for pos in st.session_state.positions:
@@ -528,7 +569,7 @@ elif page == "Купонный календарь":
             st.markdown(f"""
             <div class='coupon-upcoming'>
                 <h4>{c['short_name']} — {c['date'].strftime('%d.%m.%Y')}</h4>
-                <p> {c['amount']:,.2f} ₽ | ⏰ Через {days} дн.</p>
+                <p>💵 {c['amount']:,.2f} ₽ |  Через {days} дн.</p>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -571,7 +612,7 @@ elif page == "Стресс-тесты":
 # ==================== ПРОГНОЗ ЦЕЛИ ====================
 
 elif page == "Прогноз цели":
-    st.title("🎯 Прогноз цели")
+    st.title(" Прогноз цели")
     target = st.number_input("Цель ₽", value=10_000_000, step=100_000)
     monthly = st.number_input("Вложения в месяц ₽", value=100_000, step=10_000)
     
@@ -638,7 +679,7 @@ elif page == "Импорт из брокера":
             with c3:
                 p_col = st.selectbox("Цена", cols, key="p_col")
             
-            if st.button("🚀 Импортировать"):
+            if st.button(" Импортировать"):
                 def clean(v):
                     if pd.isna(v): return 0.0
                     s = str(v).replace(' ', '').replace('₽', '').replace(',', '.')
@@ -694,7 +735,6 @@ elif page == "Импорт из брокера":
     
     st.markdown("---")
     st.subheader("📝 Ручное обновление цен покупки")
-    st.info("Если импорт не работает — обновите цены вручную:")
     
     for i, pos in enumerate(st.session_state.positions):
         col1, col2 = st.columns([3, 1])
@@ -726,7 +766,7 @@ elif page == "Достижения":
         st.markdown(f'<div class="stars-display">{star_icon} {stars_count}</div>', unsafe_allow_html=True)
     
     st.markdown("---")
-    st.subheader(" Достижения")
+    st.subheader("🏆 Достижения")
     achievements = get_achievements(metrics)
     
     left = [a for i, a in enumerate(achievements) if i % 2 == 0]
