@@ -652,13 +652,10 @@ elif page == "Импорт из брокера":
             file_name = uploaded_file.name.lower()
             
             if file_name.endswith(('.html', '.htm')):
-                # Читаем все таблицы из HTML
                 html_content = uploaded_file.read().decode('utf-8', errors='ignore')
                 tables = pd.read_html(html_content)
                 
-                # Ищем таблицу с наибольшим количеством данных
                 if len(tables) > 0:
-                    # Выбираем таблицу с максимальным количеством строк
                     max_rows = 0
                     best_table_idx = 0
                     for i, table in enumerate(tables):
@@ -667,10 +664,11 @@ elif page == "Импорт из брокера":
                             best_table_idx = i
                     
                     df_import = tables[best_table_idx].copy()
-                    st.success(f"✅ HTML файл обработан! Найдено {len(tables)} таблиц, используем таблицу с {len(df_import)} записями")
                     
-                    # Переименовываем колонки чтобы избежать конфликтов
-                    df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
+                    # ✅ ИСПРАВЛЕНИЕ: делаем колонки уникальными через числовые индексы
+                    df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
+                    
+                    st.success(f"✅ HTML файл обработан! Найдено {len(tables)} таблиц, используем таблицу с {len(df_import)} записями")
                 else:
                     st.error("❌ В HTML файле не найдены таблицы")
                     
@@ -683,13 +681,12 @@ elif page == "Импорт из брокера":
                     except:
                         df_import = pd.read_csv(uploaded_file, sep='\t', encoding='utf-8')
                 
-                # Переименовываем колонки
-                df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
+                df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ CSV файл загружен! Найдено {len(df_import)} записей")
                 
             elif file_name.endswith(('.xlsx', '.xls')):
                 df_import = pd.read_excel(uploaded_file)
-                df_import.columns = [f"col_{i}" for i in range(len(df_import.columns))]
+                df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ Excel файл загружен! Найдено {len(df_import)} записей")
             
             if df_import is not None and len(df_import) > 0:
@@ -717,7 +714,7 @@ elif page == "Импорт из брокера":
                     # Преобразуем в строки и очищаем
                     df_filtered[ticker_col] = df_filtered[ticker_col].astype(str).str.strip()
                     
-                    # Преобразуем в числа (исправление ошибки dtype)
+                    # Преобразуем в числа
                     df_filtered[qty_col] = pd.to_numeric(df_filtered[qty_col], errors='coerce').fillna(0)
                     df_filtered[price_col] = pd.to_numeric(df_filtered[price_col], errors='coerce').fillna(0)
                     
@@ -735,7 +732,6 @@ elif page == "Импорт из брокера":
                         qty = int(float(row[qty_col]))
                         price = float(row[price_col])
                         
-                        # Пропускаем пустые строки
                         if not ticker or ticker == 'nan' or qty == 0:
                             continue
                         
@@ -786,6 +782,7 @@ elif page == "Импорт из брокера":
             st.session_state.positions[i]['buy_price'] = new_price
             st.success(f"✅ Цена {pos['short_name']} обновлена!")
             st.rerun()
+
 
 
 elif page == "Достижения":
