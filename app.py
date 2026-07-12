@@ -631,16 +631,14 @@ elif page == "Импорт из брокера":
     st.title("📥 Импорт данных из брокера")
     st.markdown("""
     ### Поддерживаемые форматы:
+    - **CSV** — лучший вариант ✅
     - **HTML** — отчеты Тинькофф, Сбер, ВТБ
-    - **CSV** — универсальный формат
     - **Excel (XLSX)** — если экспортировали из Excel
     
-    ### Если импорт не работает:
-    1. Откройте HTML файл в браузере
-    2. Скопируйте таблицу с данными
-    3. Вставьте в Excel
-    4. Сохраните как CSV
-    5. Загрузите CSV файл
+    ### Как работает импорт:
+    1. Загрузите файл
+    2. Укажите **номера колонок** (0, 1, 2...)
+    3. Нажмите "Применить импорт"
     """)
     st.markdown("---")
     
@@ -654,7 +652,6 @@ elif page == "Импорт из брокера":
             if file_name.endswith(('.html', '.htm')):
                 html_content = uploaded_file.read().decode('utf-8', errors='ignore')
                 tables = pd.read_html(html_content)
-                
                 if len(tables) > 0:
                     max_rows = 0
                     best_table_idx = 0
@@ -662,13 +659,8 @@ elif page == "Импорт из брокера":
                         if len(table) > max_rows:
                             max_rows = len(table)
                             best_table_idx = i
-                    
                     df_import = tables[best_table_idx].copy()
-                    
-                    # ✅ ИСПРАВЛЕНИЕ: делаем колонки уникальными через числовые индексы
-                    df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
-                    
-                    st.success(f"✅ HTML файл обработан! Найдено {len(tables)} таблиц, используем таблицу с {len(df_import)} записями")
+                    st.success(f"✅ HTML файл обработан! Таблица с {len(df_import)} записями")
                 else:
                     st.error("❌ В HTML файле не найдены таблицы")
                     
@@ -680,59 +672,102 @@ elif page == "Импорт из брокера":
                         df_import = pd.read_csv(uploaded_file, sep=',', encoding='utf-8')
                     except:
                         df_import = pd.read_csv(uploaded_file, sep='\t', encoding='utf-8')
-                
-                df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ CSV файл загружен! Найдено {len(df_import)} записей")
                 
             elif file_name.endswith(('.xlsx', '.xls')):
                 df_import = pd.read_excel(uploaded_file)
-                df_import.columns = [f"Колонка_{i}" for i in range(len(df_import.columns))]
                 st.success(f"✅ Excel файл загружен! Найдено {len(df_import)} записей")
             
             if df_import is not None and len(df_import) > 0:
-                st.subheader("Превью данных")
-                st.dataframe(df_import.head(10), use_container_width=True)
-                st.markdown("---")
-                st.subheader("Сопоставление колонок")
-                st.info("Выберите колонки из файла:")
+                # ✅ НОВОЕ: показываем превью с НОМЕРАМИ колонок
+                st.subheader("Превью данных (с номерами колонок)")
                 
-                col_names = df_import.columns.tolist()
+                # Создаём копию для отображения с номерами колонок
+                df_preview = df_import.head(10).copy()
+                df_preview.columns = [f"Колонка {i}: {col}" for i, col in enumerate(df_import.columns)]
+                st.dataframe(df_preview, use_container_width=True)
+                
+                st.markdown("---")
+                st.subheader("Выбор колонок по номеру")
+                st.info("Укажите номера колонок (начинаются с 0)")
+                
+                num_cols = len(df_import.columns)
+                col_options = list(range(num_cols))
                 
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    ticker_col = st.selectbox("Колонка с тикером/названием", col_names, key="ticker_col")
+                    ticker_col_idx = st.selectbox("Колонка с тикером/названием", col_options, key="ticker_col_idx")
                 with col2:
-                    date_col = st.selectbox("Колонка с датой", col_names, key="date_col")
+                    date_col_idx = st.selectbox("Колонка с датой", col_options, key="date_col_idx")
                 with col3:
-                    qty_col = st.selectbox("Колонка с количеством", col_names, key="qty_col")
+                    qty_col_idx = st.selectbox("Колонка с количеством", col_options, key="qty_col_idx")
                 with col4:
-                    price_col = st.selectbox("Колонка с ценой", col_names, key="price_col")
+                    price_col_idx = st.selectbox("Колонка с ценой", col_options, key="price_col_idx")
+                
+                # Показываем что выбрано
+                st.markdown(f"""
+                **Выбрано:**
+                - Тикер: колонка {ticker_col_idx} ({df_import.columns[ticker_col_idx]})
+                - Дата: колонка {date_col_idx} ({df_import.columns[date_col_idx]})
+                - Количество: колонка {qty_col_idx} ({df_import.columns[qty_col_idx]})
+                - Цена: колонка {price_col_idx} ({df_import.columns[price_col_idx]})
+                """)
                 
                 if st.button("Применить импорт", type="primary"):
+                    # ✅ НОВОЕ: работаем через iloc (по индексам), а не по именам
                     df_filtered = df_import.copy()
                     
-                    # Преобразуем в строки и очищаем
-                    df_filtered[ticker_col] = df_filtered[ticker_col].astype(str).str.strip()
+                    # Берём данные по индексам колонок
+                    tickers = df_filtered.iloc[:, ticker_col_idx].astype(str).str.strip()
+                    qtys_raw = df_filtered.iloc[:, qty_col_idx]
+                    prices_raw = df_filtered.iloc[:, price_col_idx]
                     
-                    # Преобразуем в числа
-                    df_filtered[qty_col] = pd.to_numeric(df_filtered[qty_col], errors='coerce').fillna(0)
-                    df_filtered[price_col] = pd.to_numeric(df_filtered[price_col], errors='coerce').fillna(0)
+                    # ✅ Функция очистки чисел от текста
+                    def clean_number(val):
+                        if pd.isna(val):
+                            return 0.0
+                        s = str(val)
+                        # Убираем пробелы (включая неразрывные)
+                        s = s.replace(' ', '').replace('\u00a0', '')
+                        # Убираем символы валют и ₽
+                        s = s.replace('₽', '').replace('руб', '').replace('RUB', '').replace('$', '')
+                        # Заменяем запятую на точку (для дробных)
+                        s = s.replace(',', '.')
+                        # Убираем всё кроме цифр, точки и минуса
+                        s = ''.join(c for c in s if c.isdigit() or c in '.-')
+                        try:
+                            return float(s)
+                        except:
+                            return 0.0
+                    
+                    qtys = qtys_raw.apply(clean_number)
+                    prices = prices_raw.apply(clean_number)
+                    
+                    # Создаём DataFrame для группировки
+                    df_clean = pd.DataFrame({
+                        'ticker': tickers,
+                        'qty': qtys,
+                        'price': prices
+                    })
                     
                     # Группируем по тикеру
-                    grouped = df_filtered.groupby(ticker_col).agg({
-                        qty_col: 'sum',
-                        price_col: 'mean'
+                    grouped = df_clean.groupby('ticker').agg({
+                        'qty': 'sum',
+                        'price': 'mean'
                     }).reset_index()
                     
                     updated_count = 0
                     added_count = 0
+                    skipped_count = 0
                     
                     for _, row in grouped.iterrows():
-                        ticker = str(row[ticker_col]).strip()
-                        qty = int(float(row[qty_col]))
-                        price = float(row[price_col])
+                        ticker = str(row['ticker']).strip()
+                        qty = int(float(row['qty']))
+                        price = float(row['price'])
                         
-                        if not ticker or ticker == 'nan' or qty == 0:
+                        # Пропускаем пустые
+                        if not ticker or ticker == 'nan' or ticker == '' or qty == 0:
+                            skipped_count += 1
                             continue
                         
                         found = False
@@ -761,7 +796,8 @@ elif page == "Импорт из брокера":
                             })
                             added_count += 1
                     
-                    st.success(f"✅ Импорт завершен! Обновлено: {updated_count}, Добавлено: {added_count}")
+                    st.success(f"✅ Импорт завершен!")
+                    st.info(f"Обновлено: {updated_count} | Добавлено: {added_count} | Пропущено: {skipped_count}")
                     st.rerun()
                     
         except Exception as e:
