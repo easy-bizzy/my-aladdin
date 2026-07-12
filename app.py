@@ -86,25 +86,49 @@ def get_moex_prices(tickers):
             prices[ticker] = None
     return prices
 
-def get_coupon_dates(ticker, coupon_rate, face_value=1000):
+# ИСПРАВЛЕННЫЕ ДАТЫ И СУММЫ КУПОНОВ
+def get_coupon_dates(ticker, coupon_rate, qty, face_value=1000):
+    # Точные даты и суммы купонов от пользователя
     coupon_schedule = {
-        'SU26238RMFS4': (4, 15, 10, 15),
-        'SU26246RMFS7': (3, 22, 9, 22),
-        'SU26247RMFS5': (5, 18, 11, 18),
-        'SU26248RMFS3': (2, 12, 8, 12),
-        'SU26254RMFS1': (6, 25, 12, 25),
+        'SU26238RMFS4': {
+            'dates': [(12, 2), (6, 2)],  # 2 декабря, 2 июня
+            'amount_per_bond': 35.4  # 1451.4 / 41
+        },
+        'SU26246RMFS7': {
+            'dates': [(9, 23), (3, 23)],  # 23 сентября, 23 марта
+            'amount_per_bond': 59.84  # 3889.6 / 65
+        },
+        'SU26247RMFS5': {
+            'dates': [(11, 25), (5, 25)],  # 25 ноября, 25 мая
+            'amount_per_bond': 61.08  # 9100.92 / 149
+        },
+        'SU26248RMFS3': {
+            'dates': [(12, 2), (6, 2)],  # 2 декабря, 2 июня
+            'amount_per_bond': 61.08  # 10627.92 / 174
+        },
+        'SU26254RMFS1': {
+            'dates': [(10, 21), (4, 21)],  # 21 октября, 21 апреля
+            'amount_per_bond': 64.82  # 16205 / 250
+        }
     }
+    
     if ticker not in coupon_schedule:
         return []
-    m1, d1, m2, d2 = coupon_schedule[ticker]
-    coupon_amount = face_value * coupon_rate / 2
+    
+    schedule = coupon_schedule[ticker]
     today = datetime.now()
     coupons = []
+    
     for year_offset in range(2):
-        for month, day in [(m1, d1), (m2, d2)]:
+        for month, day in schedule['dates']:
             coupon_date = datetime(today.year + year_offset, month, day)
             if coupon_date >= today:
-                coupons.append({'date': coupon_date, 'amount': coupon_amount, 'ticker': ticker})
+                coupons.append({
+                    'date': coupon_date,
+                    'amount': schedule['amount_per_bond'] * qty,
+                    'ticker': ticker
+                })
+    
     return sorted(coupons, key=lambda x: x['date'])[:4]
 
 def get_investor_level(total_value):
@@ -119,11 +143,11 @@ def get_investor_level(total_value):
     elif total_value < 5_000_000:
         return "🏆 Мифическая честь", "level-badge-mythic-honor", 5_000_000, "До Славы"
     elif total_value < 7_500_000:
-        return "🔥 Мифическая слава", "level-badge-mythic-glory", 7_500_000, "До Легиона"
+        return " Мифическая слава", "level-badge-mythic-glory", 7_500_000, "До Легиона"
     elif total_value < 10_000_000:
         return "⚔️ Мифический легион", "level-badge-mythic-legion", 10_000_000, "До Бессмертного"
     else:
-        return " Мифический бессмертный", "level-badge-mythic-immortal", 10_000_000, "MAX!"
+        return "🌟 Мифический бессмертный", "level-badge-mythic-immortal", 10_000_000, "MAX!"
 
 def get_star_level(annual_coupon):
     if annual_coupon >= 1_000_000:
@@ -137,17 +161,17 @@ def get_star_level(annual_coupon):
 
 def get_achievements(metrics):
     return [
-        {'name': 'Первые шаги', 'icon': '👶', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
+        {'name': 'Первые шаги', 'icon': '', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
         {'name': 'Сотня', 'icon': '💰', 'description': '100 000 ₽', 'unlocked': metrics['total_value'] >= 100_000, 'condition': f"{metrics['total_value']:,.0f} / 100 000"},
-        {'name': 'Полмиллиона', 'icon': '', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
+        {'name': 'Полмиллиона', 'icon': '💎', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
         {'name': 'Миллионер', 'icon': '🤑', 'description': '1 000 000 ₽', 'unlocked': metrics['total_value'] >= 1_000_000, 'condition': f"{metrics['total_value']:,.0f} / 1 000 000"},
         {'name': 'Диверсификация', 'icon': '📊', 'description': '5 облигаций', 'unlocked': len(st.session_state.positions) >= 5, 'condition': f"{len(st.session_state.positions)} / 5"},
         {'name': 'В плюсе', 'icon': '📈', 'description': 'P&L > 0', 'unlocked': metrics['total_pnl'] > 0, 'condition': f"{metrics['total_pnl']:+,.0f} ₽"},
         {'name': '25 звезд', 'icon': '⭐', 'description': 'Купон 250 000 ₽', 'unlocked': metrics['annual_coupon'] >= 250_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 250 000"},
         {'name': '50 звезд', 'icon': '⭐', 'description': 'Купон 500 000 ₽', 'unlocked': metrics['annual_coupon'] >= 500_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 500 000"},
         {'name': '100 звезд', 'icon': '⭐', 'description': 'Купон 1 000 000 ₽', 'unlocked': metrics['annual_coupon'] >= 1_000_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 1 000 000"},
-        {'name': 'Мифический легион', 'icon': '️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
-        {'name': 'Мифический бессмертный', 'icon': '', 'description': '10 000 000 ₽', 'unlocked': metrics['total_value'] >= 10_000_000, 'condition': f"{metrics['total_value']:,.0f} / 10 000 000"},
+        {'name': 'Мифический легион', 'icon': '⚔️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
+        {'name': 'Мифический бессмертный', 'icon': '🌟', 'description': '10 000 000 ₽', 'unlocked': metrics['total_value'] >= 10_000_000, 'condition': f"{metrics['total_value']:,.0f} / 10 000 000"},
     ]
 
 # ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -326,7 +350,7 @@ elif page == "Позиции":
             st.success("✅ Сохранено!")
             st.rerun()
         
-        if st.button("️ Удалить"):
+        if st.button("🗑️ Удалить"):
             st.session_state.positions.pop(idx)
             st.success("✅ Удалено!")
             st.rerun()
@@ -360,70 +384,160 @@ elif page == "Позиции":
 elif page == "Купонный календарь":
     st.title("📅 Купонный календарь")
     
-    st.subheader("💰 Доход до погашения")
-    maturity_data = []
-    total_coupons = 0
-    total_nominal = 0
+    # Плашки доходов
+    st.subheader("💰 Доходы")
     
-    for pos in st.session_state.positions:
-        mat_years = pos.get('maturity_years', 5)
-        coupon_per_year = pos['qty'] * 1000 * pos['coupon_rate']
-        total_c = coupon_per_year * mat_years
-        nominal = pos['qty'] * 1000
-        cost = pos['qty'] * pos['buy_price'] * 10
-        profit = total_c + nominal - cost
-        total_coupons += total_c
-        total_nominal += nominal
-        maturity_data.append({
-            'Облигация': pos['short_name'],
-            'Лет': mat_years,
-            'Купоны ₽': f"{total_c:,.0f}",
-            'Номинал ₽': f"{nominal:,.0f}",
-            'Доход ₽': f"{total_c + nominal:,.0f}",
-            'Прибыль ₽': f"{profit:+,.0f}"
-        })
+    annual_coupon = metrics['annual_coupon']
+    current_value = metrics['total_value']
     
-    st.dataframe(pd.DataFrame(maturity_data), use_container_width=True, hide_index=True)
+    # Расчет с реинвестированием (сложный процент)
+    with_reinvest_1y = current_value * (1 + annual_coupon/current_value) ** 1 - current_value
+    with_reinvest_5y = current_value * (1 + annual_coupon/current_value) ** 5 - current_value
+    with_reinvest_10y = current_value * (1 + annual_coupon/current_value) ** 10 - current_value
+    
+    # Без реинвестирования (простой процент)
+    without_reinvest_1y = annual_coupon * 1
+    without_reinvest_5y = annual_coupon * 5
+    without_reinvest_10y = annual_coupon * 10
+    
+    # До погашения (среднее 10 лет)
+    avg_maturity = np.mean([p.get('maturity_years', 5) for p in st.session_state.positions])
+    with_reinvest_maturity = current_value * (1 + annual_coupon/current_value) ** avg_maturity - current_value
+    without_reinvest_maturity = annual_coupon * avg_maturity
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🔄 С реинвестированием купонов")
+        st.metric("За 1 год", f"{with_reinvest_1y:,.0f} ₽")
+        st.metric("За 5 лет", f"{with_reinvest_5y:,.0f} ₽")
+        st.metric("За 10 лет", f"{with_reinvest_10y:,.0f} ₽")
+        st.metric(f"До погашения ({avg_maturity:.0f} лет)", f"{with_reinvest_maturity:,.0f} ₽")
+    
+    with col2:
+        st.markdown("### 💵 Без реинвестирования")
+        st.metric("За 1 год", f"{without_reinvest_1y:,.0f} ₽")
+        st.metric("За 5 лет", f"{without_reinvest_5y:,.0f} ₽")
+        st.metric("За 10 лет", f"{without_reinvest_10y:,.0f} ₽")
+        st.metric(f"До погашения ({avg_maturity:.0f} лет)", f"{without_reinvest_maturity:,.0f} ₽")
     
     st.markdown("---")
+    
+    # График с ползунками
+    st.subheader("📈 Моделирование роста портфеля")
+    
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Всего купонов", f"{total_coupons:,.0f} ₽")
+        years = st.slider("Период (лет)", 1, 20, 10)
     with col2:
-        st.metric("Номинал", f"{total_nominal:,.0f} ₽")
+        monthly_investment = st.slider("Ежемесячное пополнение (₽)", 0, 500000, 100000, 10000)
     with col3:
-        st.metric("Общий доход", f"{total_coupons + total_nominal:,.0f} ₽")
+        annual_return = st.slider("Годовая доходность (%)", 0.0, 30.0, 12.0, 0.5)
+    
+    # Расчет трех сценариев
+    months = years * 12
+    monthly_rate = annual_return / 100 / 12
+    
+    # Сценарий 1: С реинвестированием + пополнение
+    values_with_reinvest = [current_value]
+    for m in range(months):
+        new_value = values_with_reinvest[-1] * (1 + monthly_rate) + monthly_investment
+        values_with_reinvest.append(new_value)
+    
+    # Сценарий 2: Только пополнение без доходности
+    values_no_return = [current_value]
+    for m in range(months):
+        new_value = values_no_return[-1] + monthly_investment
+        values_no_return.append(new_value)
+    
+    # Сценарий 3: Ничего не делать (только доходность без пополнения)
+    values_no_action = [current_value]
+    for m in range(months):
+        new_value = values_no_action[-1] * (1 + monthly_rate)
+        values_no_action.append(new_value)
+    
+    # График
+    fig = go.Figure()
+    
+    months_list = list(range(months + 1))
+    
+    fig.add_trace(go.Scatter(
+        x=months_list,
+        y=values_with_reinvest,
+        mode='lines',
+        name='С реинвестированием + пополнение',
+        line=dict(color='rgb(46, 204, 113)', width=3)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=months_list,
+        y=values_no_action,
+        mode='lines',
+        name='Только доходность (без пополнения)',
+        line=dict(color='rgb(52, 152, 219)', width=3)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=months_list,
+        y=values_no_return,
+        mode='lines',
+        name='Только пополнение (без доходности)',
+        line=dict(color='rgb(231, 76, 60)', width=3)
+    ))
+    
+    fig.update_layout(
+        height=500,
+        template='plotly_white',
+        xaxis_title="Месяцы",
+        yaxis_title="Стоимость портфеля (₽)",
+        hovermode='x unified'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Итоговые значения
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("С реинвестированием + пополнение", f"{values_with_reinvest[-1]:,.0f} ₽", 
+                 f"{values_with_reinvest[-1] - current_value:+,.0f} ₽")
+    with col2:
+        st.metric("Только доходность", f"{values_no_action[-1]:,.0f} ₽",
+                 f"{values_no_action[-1] - current_value:+,.0f} ₽")
+    with col3:
+        st.metric("Только пополнение", f"{values_no_return[-1]:,.0f} ₽",
+                 f"{values_no_return[-1] - current_value:+,.0f} ₽")
     
     st.markdown("---")
-    st.subheader(" Ближайшие выплаты")
+    
+    # Ближайшие выплаты
+    st.subheader("📆 Ближайшие выплаты купонов")
     all_coupons = []
     for pos in st.session_state.positions:
-        for c in get_coupon_dates(pos['ticker'], pos['coupon_rate']):
+        for c in get_coupon_dates(pos['ticker'], pos['coupon_rate'], pos['qty']):
             c['short_name'] = pos['short_name']
-            c['total'] = c['amount'] * pos['qty']
             all_coupons.append(c)
     all_coupons = sorted(all_coupons, key=lambda x: x['date'])
     today = datetime.now()
-    upcoming = [c for c in all_coupons if c['date'] <= today + timedelta(days=90)]
+    upcoming = [c for c in all_coupons if c['date'] <= today + timedelta(days=180)]
     
     if upcoming:
-        total_up = sum(c['total'] for c in upcoming)
-        st.success(f"Итого за 90 дней: {total_up:,.0f} ₽")
+        total_up = sum(c['amount'] for c in upcoming)
+        st.success(f"Итого за 180 дней: {total_up:,.0f} ₽")
         for c in upcoming:
             days = (c['date'] - today).days
             st.markdown(f"""
             <div class='coupon-upcoming'>
                 <h4>{c['short_name']} — {c['date'].strftime('%d.%m.%Y')}</h4>
-                <p>💵 {c['total']:,.0f} ₽ | ⏰ Через {days} дн.</p>
+                <p> {c['amount']:,.2f} ₽ | ⏰ Через {days} дн.</p>
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("Нет выплат в ближайшие 90 дней")
+        st.info("Нет выплат в ближайшие 180 дней")
 
 # ==================== СТРЕСС-ТЕСТЫ ====================
 
 elif page == "Стресс-тесты":
-    st.title(" Стресс-тесты")
+    st.title("🔥 Стресс-тесты")
     col1, col2 = st.columns(2)
     with col1:
         rate = st.slider("Ставка %", -5.0, 10.0, 0.0, 0.1)
@@ -484,7 +598,7 @@ elif page == "Прогноз цели":
 elif page == "Импорт из брокера":
     st.title("📥 Импорт из брокера")
     
-    st.info(" Если импорт не работает — используйте вкладку 'Позиции' для ручного редактирования")
+    st.info("💡 Если импорт не работает — используйте вкладку 'Позиции' для ручного редактирования")
     
     uploaded = st.file_uploader("Загрузить файл", type=['csv', 'html', 'htm', 'xlsx', 'xls'])
     
@@ -612,7 +726,7 @@ elif page == "Достижения":
         st.markdown(f'<div class="stars-display">{star_icon} {stars_count}</div>', unsafe_allow_html=True)
     
     st.markdown("---")
-    st.subheader("🏆 Достижения")
+    st.subheader(" Достижения")
     achievements = get_achievements(metrics)
     
     left = [a for i, a in enumerate(achievements) if i % 2 == 0]
