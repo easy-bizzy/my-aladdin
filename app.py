@@ -7,12 +7,11 @@ import requests
 from datetime import datetime, timedelta
 import re
 
-st.set_page_config(page_title="Mini-Aladdin", page_icon="", layout="wide")
+st.set_page_config(page_title="Mini-Aladdin", page_icon="📊", layout="wide")
 
 # ==================== CSS ====================
 st.markdown("""
 <style>
-    /* Светлая тема */
     @media (prefers-color-scheme: light) {
         .main, .main *, body, html { background-color: #ffffff !important; }
         h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th { color: #000000 !important; }
@@ -23,8 +22,6 @@ st.markdown("""
         .stDataFrame td { color: #000000 !important; }
         input, textarea, select { background-color: #ffffff !important; color: #000000 !important; }
     }
-    
-    /* Тёмная тема */
     @media (prefers-color-scheme: dark) {
         .main, .main *, body, html { background-color: #0e1117 !important; }
         h1, h2, h3, h4, h5, h6, p, span, div, label, li, td, th { color: #ffffff !important; }
@@ -37,35 +34,26 @@ st.markdown("""
         .stSuccess { background-color: #0f5132 !important; color: #ffffff !important; }
         .stError { background-color: #842029 !important; color: #ffffff !important; }
     }
-    
     div[data-testid="stMetric"] { border-radius: 10px !important; padding: 15px !important; }
     div[data-testid="stMetric"] p { font-weight: bold !important; font-size: 24px !important; }
     div[data-testid="stMetric"] label { font-size: 14px !important; }
-    
     section[data-testid="stSidebar"] { background-color: #1e3a5f !important; }
     section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] div { color: #ffffff !important; }
-    
     .stButton button { background-color: #4a90e2 !important; color: #ffffff !important; border-radius: 8px !important; font-weight: 600 !important; padding: 10px 20px !important; }
     footer { visibility: hidden; }
-    
-    @media (max-width: 768px) {
-        div[data-testid="stMetric"] p { font-size: 18px !important; }
-        h1 { font-size: 22px !important; }
-    }
-    
-    .level-badge-epic { background: linear-gradient(135deg, #00c853, #69f0ae); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4); }
-    .level-badge-legend { background: linear-gradient(135deg, #ffd700, #ffed4e, #ffa000); padding: 15px 30px; border-radius: 50px; color: #333 !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5); }
-    .level-badge-mythic { background: linear-gradient(135deg, #9c27b0, #e040fb, #7c4dff); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(156, 39, 176, 0.5); }
-    .level-badge-mythic-honor { background: linear-gradient(135deg, #d32f2f, #9c27b0); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(211, 47, 47, 0.5); }
-    .level-badge-mythic-glory { background: linear-gradient(135deg, #ff6f00, #ffd700, #ff6f00); padding: 15px 30px; border-radius: 50px; color: #333 !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(255, 111, 0, 0.6); }
-    .level-badge-mythic-legion { background: linear-gradient(135deg, #ff1744, #d500f9, #2979ff, #00e676); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 20px rgba(213, 0, 249, 0.6); }
-    .level-badge-mythic-immortal { background: linear-gradient(135deg, #000000, #1a237e, #4a148c, #880e4f, #ffd700); padding: 15px 30px; border-radius: 50px; color: #ffd700 !important; font-weight: bold; display: inline-block; box-shadow: 0 4px 25px rgba(255, 215, 0, 0.7); }
-    
+    @media (max-width: 768px) { div[data-testid="stMetric"] p { font-size: 18px !important; } h1 { font-size: 22px !important; } }
+    .level-badge-epic { background: linear-gradient(135deg, #00c853, #69f0ae); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; }
+    .level-badge-legend { background: linear-gradient(135deg, #ffd700, #ffa000); padding: 15px 30px; border-radius: 50px; color: #333 !important; font-weight: bold; display: inline-block; }
+    .level-badge-mythic { background: linear-gradient(135deg, #9c27b0, #7c4dff); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; }
+    .level-badge-mythic-honor { background: linear-gradient(135deg, #d32f2f, #9c27b0); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; }
+    .level-badge-mythic-glory { background: linear-gradient(135deg, #ff6f00, #ffd700); padding: 15px 30px; border-radius: 50px; color: #333 !important; font-weight: bold; display: inline-block; }
+    .level-badge-mythic-legion { background: linear-gradient(135deg, #ff1744, #2979ff, #00e676); padding: 15px 30px; border-radius: 50px; color: white !important; font-weight: bold; display: inline-block; }
+    .level-badge-mythic-immortal { background: linear-gradient(135deg, #000000, #4a148c, #ffd700); padding: 15px 30px; border-radius: 50px; color: #ffd700 !important; font-weight: bold; display: inline-block; }
     .stars-display { background: linear-gradient(135deg, #fff9c4, #fff176); padding: 15px 25px; border-radius: 15px; border: 2px solid #ffd700; color: #333 !important; font-weight: bold; display: inline-block; }
     .achievement-card { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; border-radius: 15px; margin: 10px 0; color: white !important; }
-    .achievement-card p, .achievement-card h3, .achievement-card span { color: white !important; }
+    .achievement-card * { color: white !important; }
     .coupon-upcoming { background: linear-gradient(135deg, #11998e, #38ef7d); padding: 15px; border-radius: 10px; color: white !important; margin: 5px 0; }
-    .coupon-upcoming p, .coupon-upcoming h4 { color: white !important; }
+    .coupon-upcoming * { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -91,10 +79,6 @@ def get_moex_prices(tickers):
                     price = val
             if price is None and 'PREVPRICE' in columns:
                 val = rows[0][columns.index('PREVPRICE')]
-                if val is not None:
-                    price = val
-            if price is None and 'WAPRICE' in columns:
-                val = rows[0][columns.index('WAPRICE')]
                 if val is not None:
                     price = val
             prices[ticker] = price
@@ -125,9 +109,9 @@ def get_coupon_dates(ticker, coupon_rate, face_value=1000):
 
 def get_investor_level(total_value):
     if total_value < 500_000:
-        return " Новичок", "level-badge-epic", 500_000, "До Эпика"
+        return "🌱 Новичок", "level-badge-epic", 500_000, "До Эпика"
     elif total_value < 750_000:
-        return " Эпик", "level-badge-epic", 750_000, "До Легенды"
+        return "🟢 Эпик", "level-badge-epic", 750_000, "До Легенды"
     elif total_value < 1_000_000:
         return "👑 Легенда", "level-badge-legend", 1_000_000, "До Мифического"
     elif total_value < 2_500_000:
@@ -139,7 +123,7 @@ def get_investor_level(total_value):
     elif total_value < 10_000_000:
         return "⚔️ Мифический легион", "level-badge-mythic-legion", 10_000_000, "До Бессмертного"
     else:
-        return "🌟 Мифический бессмертный", "level-badge-mythic-immortal", 10_000_000, "MAX!"
+        return " Мифический бессмертный", "level-badge-mythic-immortal", 10_000_000, "MAX!"
 
 def get_star_level(annual_coupon):
     if annual_coupon >= 1_000_000:
@@ -154,16 +138,16 @@ def get_star_level(annual_coupon):
 def get_achievements(metrics):
     return [
         {'name': 'Первые шаги', 'icon': '👶', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
-        {'name': 'Сотня', 'icon': '', 'description': '100 000 ₽', 'unlocked': metrics['total_value'] >= 100_000, 'condition': f"{metrics['total_value']:,.0f} / 100 000"},
-        {'name': 'Полмиллиона', 'icon': '💎', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
+        {'name': 'Сотня', 'icon': '💰', 'description': '100 000 ₽', 'unlocked': metrics['total_value'] >= 100_000, 'condition': f"{metrics['total_value']:,.0f} / 100 000"},
+        {'name': 'Полмиллиона', 'icon': '', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
         {'name': 'Миллионер', 'icon': '🤑', 'description': '1 000 000 ₽', 'unlocked': metrics['total_value'] >= 1_000_000, 'condition': f"{metrics['total_value']:,.0f} / 1 000 000"},
         {'name': 'Диверсификация', 'icon': '📊', 'description': '5 облигаций', 'unlocked': len(st.session_state.positions) >= 5, 'condition': f"{len(st.session_state.positions)} / 5"},
         {'name': 'В плюсе', 'icon': '📈', 'description': 'P&L > 0', 'unlocked': metrics['total_pnl'] > 0, 'condition': f"{metrics['total_pnl']:+,.0f} ₽"},
         {'name': '25 звезд', 'icon': '⭐', 'description': 'Купон 250 000 ₽', 'unlocked': metrics['annual_coupon'] >= 250_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 250 000"},
         {'name': '50 звезд', 'icon': '⭐', 'description': 'Купон 500 000 ₽', 'unlocked': metrics['annual_coupon'] >= 500_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 500 000"},
         {'name': '100 звезд', 'icon': '⭐', 'description': 'Купон 1 000 000 ₽', 'unlocked': metrics['annual_coupon'] >= 1_000_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 1 000 000"},
-        {'name': 'Мифический легион', 'icon': '⚔️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
-        {'name': 'Мифический бессмертный', 'icon': '🌟', 'description': '10 000 000 ₽', 'unlocked': metrics['total_value'] >= 10_000_000, 'condition': f"{metrics['total_value']:,.0f} / 10 000 000"},
+        {'name': 'Мифический легион', 'icon': '️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
+        {'name': 'Мифический бессмертный', 'icon': '', 'description': '10 000 000 ₽', 'unlocked': metrics['total_value'] >= 10_000_000, 'condition': f"{metrics['total_value']:,.0f} / 10 000 000"},
     ]
 
 # ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -219,7 +203,7 @@ metrics = calculate_metrics(st.session_state.positions)
 with st.sidebar:
     st.title("📊 Mini-Aladdin")
     st.markdown("---")
-    page = st.radio("Навигация", ["Главная", "Позиции", "Купонный календарь", "Стресс-тесты", "Прогноз цели", "Импорт", "Достижения"], index=0)
+    page = st.radio("Навигация", ["Главная", "Позиции", "Купонный календарь", "Стресс-тесты", "Прогноз цели", "Импорт из брокера", "Достижения"], index=0)
     st.markdown("---")
     st.caption(f"Цены: {price_update_time.strftime('%H:%M')}")
     level_name, level_css, next_level, _ = get_investor_level(metrics['total_value'])
@@ -342,7 +326,7 @@ elif page == "Позиции":
             st.success("✅ Сохранено!")
             st.rerun()
         
-        if st.button("🗑️ Удалить"):
+        if st.button("️ Удалить"):
             st.session_state.positions.pop(idx)
             st.success("✅ Удалено!")
             st.rerun()
@@ -411,7 +395,7 @@ elif page == "Купонный календарь":
         st.metric("Общий доход", f"{total_coupons + total_nominal:,.0f} ₽")
     
     st.markdown("---")
-    st.subheader("📆 Ближайшие выплаты")
+    st.subheader(" Ближайшие выплаты")
     all_coupons = []
     for pos in st.session_state.positions:
         for c in get_coupon_dates(pos['ticker'], pos['coupon_rate']):
@@ -439,7 +423,7 @@ elif page == "Купонный календарь":
 # ==================== СТРЕСС-ТЕСТЫ ====================
 
 elif page == "Стресс-тесты":
-    st.title("🔥 Стресс-тесты")
+    st.title(" Стресс-тесты")
     col1, col2 = st.columns(2)
     with col1:
         rate = st.slider("Ставка %", -5.0, 10.0, 0.0, 0.1)
@@ -495,84 +479,119 @@ elif page == "Прогноз цели":
         best = df_f.iloc[0]
         st.success(f"🏆 Лучший: {best['Облигация']} — {best['Лет']:.1f} лет")
 
-# ==================== ИМПОРТ ====================
+# ==================== ИМПОРТ ИЗ БРОКЕРА ====================
 
-elif page == "Импорт":
+elif page == "Импорт из брокера":
     st.title("📥 Импорт из брокера")
+    
     st.info(" Если импорт не работает — используйте вкладку 'Позиции' для ручного редактирования")
     
-    uploaded = st.file_uploader("Загрузить CSV", type=['csv'])
+    uploaded = st.file_uploader("Загрузить файл", type=['csv', 'html', 'htm', 'xlsx', 'xls'])
     
     if uploaded:
         try:
-            df = pd.read_csv(uploaded, sep=';', encoding='utf-8')
-        except:
-            df = pd.read_csv(uploaded, sep=',', encoding='utf-8')
-        
-        st.success(f"Загружено: {len(df)} строк")
-        st.dataframe(df.head(20), use_container_width=True)
-        
-        st.markdown("---")
-        st.subheader("Выберите колонки")
-        cols = list(range(len(df.columns)))
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            t_col = st.selectbox("Тикер", cols, key="t_col")
-        with c2:
-            q_col = st.selectbox("Количество", cols, key="q_col")
-        with c3:
-            p_col = st.selectbox("Цена", cols, key="p_col")
-        
-        if st.button("🚀 Импортировать"):
-            def clean(v):
-                if pd.isna(v): return 0.0
-                s = str(v).replace(' ', '').replace('₽', '').replace(',', '.')
-                s = ''.join(c for c in s if c.isdigit() or c in '.-')
-                try: return float(s)
-                except: return 0.0
+            df = None
+            file_name = uploaded.name.lower()
             
-            tickers_imp = df.iloc[:, t_col].astype(str).str.strip()
-            qtys_imp = df.iloc[:, q_col].apply(clean)
-            prices_imp = df.iloc[:, p_col].apply(clean)
+            if file_name.endswith('.csv'):
+                try:
+                    df = pd.read_csv(uploaded, sep=';', encoding='utf-8')
+                except:
+                    df = pd.read_csv(uploaded, sep=',', encoding='utf-8')
+            elif file_name.endswith(('.html', '.htm')):
+                html_content = uploaded.read().decode('utf-8', errors='ignore')
+                tables = pd.read_html(html_content)
+                if len(tables) > 0:
+                    df = max(tables, key=len)
+            elif file_name.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(uploaded)
             
-            mask = tickers_imp.str.contains('ОФЗ|SU|26', case=False, na=False)
-            tickers_imp = tickers_imp[mask]
-            qtys_imp = qtys_imp[mask]
-            prices_imp = prices_imp[mask]
+            if df is None or len(df) == 0:
+                st.error("❌ Не удалось прочитать файл")
+                st.stop()
             
-            updated = 0
-            added = 0
+            st.success(f"✅ Загружено: {len(df)} строк")
+            st.dataframe(df.head(20), use_container_width=True)
             
-            for i in range(len(tickers_imp)):
-                t = tickers_imp.iloc[i]
-                q = int(qtys_imp.iloc[i])
-                p = prices_imp.iloc[i]
+            st.markdown("---")
+            st.subheader("Выберите колонки")
+            cols = list(range(len(df.columns)))
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                t_col = st.selectbox("Тикер", cols, key="t_col")
+            with c2:
+                q_col = st.selectbox("Количество", cols, key="q_col")
+            with c3:
+                p_col = st.selectbox("Цена", cols, key="p_col")
+            
+            if st.button("🚀 Импортировать"):
+                def clean(v):
+                    if pd.isna(v): return 0.0
+                    s = str(v).replace(' ', '').replace('₽', '').replace(',', '.')
+                    s = ''.join(c for c in s if c.isdigit() or c in '.-')
+                    try: return float(s)
+                    except: return 0.0
                 
-                if not t or t == 'nan' or q == 0 or p == 0 or p > 200:
-                    continue
+                tickers_imp = df.iloc[:, t_col].astype(str).str.strip()
+                qtys_imp = df.iloc[:, q_col].apply(clean)
+                prices_imp = df.iloc[:, p_col].apply(clean)
                 
-                found = False
-                for pos in st.session_state.positions:
-                    if t in pos['ticker'] or pos['ticker'] in t:
-                        pos['qty'] = q
-                        pos['buy_price'] = p
-                        found = True
-                        updated += 1
-                        break
+                mask = tickers_imp.str.contains('ОФЗ|SU|26', case=False, na=False)
+                tickers_imp = tickers_imp[mask]
+                qtys_imp = qtys_imp[mask]
+                prices_imp = prices_imp[mask]
                 
-                if not found:
-                    name = t
-                    m = re.search(r'26\d{3}', t)
-                    if m: name = f"ОФЗ {m.group()}"
-                    st.session_state.positions.append({
-                        'ticker': t, 'short_name': name, 'qty': q,
-                        'buy_price': p, 'coupon_rate': 0.10, 'duration': 5.0,
-                        'current_price': p, 'maturity_years': 5
-                    })
-                    added += 1
-            
-            st.success(f"✅ Обновлено: {updated}, Добавлено: {added}")
-            st.rerun()
+                updated = 0
+                added = 0
+                
+                for i in range(len(tickers_imp)):
+                    t = tickers_imp.iloc[i]
+                    q = int(qtys_imp.iloc[i])
+                    p = prices_imp.iloc[i]
+                    
+                    if not t or t == 'nan' or q == 0 or p == 0 or p > 200:
+                        continue
+                    
+                    found = False
+                    for pos in st.session_state.positions:
+                        if t in pos['ticker'] or pos['ticker'] in t:
+                            pos['qty'] = q
+                            pos['buy_price'] = p
+                            found = True
+                            updated += 1
+                            break
+                    
+                    if not found:
+                        name = t
+                        m = re.search(r'26\d{3}', t)
+                        if m: name = f"ОФЗ {m.group()}"
+                        st.session_state.positions.append({
+                            'ticker': t, 'short_name': name, 'qty': q,
+                            'buy_price': p, 'coupon_rate': 0.10, 'duration': 5.0,
+                            'current_price': p, 'maturity_years': 5
+                        })
+                        added += 1
+                
+                st.success(f"✅ Обновлено: {updated}, Добавлено: {added}")
+                st.rerun()
+        
+        except Exception as e:
+            st.error(f"❌ Ошибка: {e}")
+    
+    st.markdown("---")
+    st.subheader("📝 Ручное обновление цен покупки")
+    st.info("Если импорт не работает — обновите цены вручную:")
+    
+    for i, pos in enumerate(st.session_state.positions):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(f"**{pos['short_name']}** ({pos['ticker']})")
+        with col2:
+            new_price = st.number_input("Цена %", value=float(pos['buy_price']), step=0.1, key=f"manual_{i}", label_visibility="collapsed")
+            if st.button("", key=f"save_{i}"):
+                st.session_state.positions[i]['buy_price'] = new_price
+                st.success("✅")
+                st.rerun()
 
 # ==================== ДОСТИЖЕНИЯ ====================
 
