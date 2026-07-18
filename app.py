@@ -67,7 +67,7 @@ try:
     CLOUD_ENABLED = True
 except:
     CLOUD_ENABLED = False
-    st.sidebar.warning("⚠️ JSONBin не настроен. Данные не сохраняются в облаке.")
+    st.sidebar.warning("️ JSONBin не настроен. Данные не сохраняются в облаке.")
 
 def load_from_cloud():
     if not CLOUD_ENABLED:
@@ -156,13 +156,13 @@ def get_investor_level(total_value):
     elif total_value < 750_000:
         return "🟢 Эпик", "level-badge-epic", 750_000, "До Легенды"
     elif total_value < 1_000_000:
-        return " Легенда", "level-badge-legend", 1_000_000, "До Мифического"
+        return "👑 Легенда", "level-badge-legend", 1_000_000, "До Мифического"
     elif total_value < 2_500_000:
         return "🔮 Мифический", "level-badge-mythic", 2_500_000, "До Чести"
     elif total_value < 5_000_000:
-        return "🏆 Мифическая честь", "level-badge-mythic-honor", 5_000_000, "До Славы"
+        return " Мифическая честь", "level-badge-mythic-honor", 5_000_000, "До Славы"
     elif total_value < 7_500_000:
-        return " Мифическая слава", "level-badge-mythic-glory", 7_500_000, "До Легиона"
+        return "🔥 Мифическая слава", "level-badge-mythic-glory", 7_500_000, "До Легиона"
     elif total_value < 10_000_000:
         return "⚔️ Мифический легион", "level-badge-mythic-legion", 10_000_000, "До Бессмертного"
     else:
@@ -183,24 +183,24 @@ def get_achievements(metrics):
         {'name': 'Первые шаги', 'icon': '👶', 'description': 'Создать портфель', 'unlocked': True, 'condition': '✅'},
         {'name': 'Сотня', 'icon': '💰', 'description': '100 000 ₽', 'unlocked': metrics['total_value'] >= 100_000, 'condition': f"{metrics['total_value']:,.0f} / 100 000"},
         {'name': 'Полмиллиона', 'icon': '💎', 'description': '500 000 ₽', 'unlocked': metrics['total_value'] >= 500_000, 'condition': f"{metrics['total_value']:,.0f} / 500 000"},
-        {'name': 'Миллионер', 'icon': '🤑', 'description': '1 000 000 ₽', 'unlocked': metrics['total_value'] >= 1_000_000, 'condition': f"{metrics['total_value']:,.0f} / 1 000 000"},
+        {'name': 'Миллионер', 'icon': '', 'description': '1 000 000 ₽', 'unlocked': metrics['total_value'] >= 1_000_000, 'condition': f"{metrics['total_value']:,.0f} / 1 000 000"},
         {'name': 'Диверсификация', 'icon': '📊', 'description': '5 облигаций', 'unlocked': len(st.session_state.positions) >= 5, 'condition': f"{len(st.session_state.positions)} / 5"},
-        {'name': 'В плюсе', 'icon': '📈', 'description': 'P&L > 0', 'unlocked': metrics['total_pnl'] > 0, 'condition': f"{metrics['total_pnl']:+,.0f} ₽"},
+        {'name': 'В плюсе', 'icon': '', 'description': 'P&L > 0', 'unlocked': metrics['total_pnl'] > 0, 'condition': f"{metrics['total_pnl']:+,.0f} ₽"},
         {'name': '25 звезд', 'icon': '⭐', 'description': 'Купон 250 000 ₽', 'unlocked': metrics['annual_coupon'] >= 250_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 250 000"},
         {'name': '50 звезд', 'icon': '⭐', 'description': 'Купон 500 000 ₽', 'unlocked': metrics['annual_coupon'] >= 500_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 500 000"},
         {'name': '100 звезд', 'icon': '⭐', 'description': 'Купон 1 000 000 ₽', 'unlocked': metrics['annual_coupon'] >= 1_000_000, 'condition': f"{metrics['annual_coupon']:,.0f} / 1 000 000"},
-        {'name': 'Мифический легион', 'icon': '⚔️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
+        {'name': 'Мифический легион', 'icon': '️', 'description': '7 500 000 ₽', 'unlocked': metrics['total_value'] >= 7_500_000, 'condition': f"{metrics['total_value']:,.0f} / 7 500 000"},
         {'name': 'Мифический бессмертный', 'icon': '🌟', 'description': '10 000 000 ₽', 'unlocked': metrics['total_value'] >= 10_000_000, 'condition': f"{metrics['total_value']:,.0f} / 10 000 000"},
     ]
 
 # ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
 DEFAULT_POSITIONS = [
-    {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 59.2, 'coupon_rate': 0.071, 'duration': 7.2, 'maturity_years': 15},
-    {'ticker': 'SU26246RMFS7', 'short_name': 'ОФЗ 26246', 'qty': 65, 'buy_price': 88.4, 'coupon_rate': 0.12, 'duration': 5.6, 'maturity_years': 8},
-    {'ticker': 'SU26247RMFS5', 'short_name': 'ОФЗ 26247', 'qty': 149, 'buy_price': 89.0, 'coupon_rate': 0.1225, 'duration': 6.08, 'maturity_years': 8},
-    {'ticker': 'SU26248RMFS3', 'short_name': 'ОФЗ 26248', 'qty': 174, 'buy_price': 88.1, 'coupon_rate': 0.1225, 'duration': 6.2, 'maturity_years': 9},
-    {'ticker': 'SU26254RMFS1', 'short_name': 'ОФЗ 26254', 'qty': 250, 'buy_price': 93.0, 'coupon_rate': 0.13, 'duration': 6.06, 'maturity_years': 10}
+    {'ticker': 'SU26238RMFS4', 'short_name': 'ОФЗ 26238', 'qty': 41, 'buy_price': 65.0, 'coupon_rate': 0.071, 'duration': 7.2, 'maturity_years': 15},
+    {'ticker': 'SU26246RMFS7', 'short_name': 'ОФЗ 26246', 'qty': 76, 'buy_price': 91.0, 'coupon_rate': 0.12, 'duration': 5.6, 'maturity_years': 8},
+    {'ticker': 'SU26247RMFS5', 'short_name': 'ОФЗ 26247', 'qty': 179, 'buy_price': 92.0, 'coupon_rate': 0.1225, 'duration': 6.08, 'maturity_years': 8},
+    {'ticker': 'SU26248RMFS3', 'short_name': 'ОФЗ 26248', 'qty': 210, 'buy_price': 91.5, 'coupon_rate': 0.1225, 'duration': 6.2, 'maturity_years': 9},
+    {'ticker': 'SU26254RMFS1', 'short_name': 'ОФЗ 26254', 'qty': 298, 'buy_price': 93.5, 'coupon_rate': 0.13, 'duration': 6.06, 'maturity_years': 10}
 ]
 
 if 'positions' not in st.session_state or len(st.session_state.positions) == 0:
@@ -251,16 +251,6 @@ def calculate_metrics(positions):
 
 metrics = calculate_metrics(st.session_state.positions)
 
-target_value = 10_000_000
-current_value = metrics['total_value']
-monthly_coupon = metrics['annual_coupon'] / 12
-
-if current_value >= target_value:
-    months_to_target = 0
-else:
-    remaining = target_value - current_value
-    months_to_target = int(np.ceil(remaining / monthly_coupon)) if monthly_coupon > 0 else 999
-
 # ==================== САЙДБАР ====================
 
 with st.sidebar:
@@ -310,7 +300,7 @@ with st.sidebar:
 # ==================== ГЛАВНАЯ ====================
 
 if page == "Главная":
-    st.title(" Обзор портфеля")
+    st.title("💼 Обзор портфеля")
     level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
     stars_count, star_icon = get_star_level(metrics['annual_coupon'])
     
@@ -332,7 +322,8 @@ if page == "Главная":
     today = datetime.now()
     
     if today >= target_date:
-        countdown_text = " Время пришло!"
+        countdown_text = "⏰ Время пришло!"
+        total_days = 0
     else:
         delta = target_date - today
         total_days = delta.days
@@ -372,7 +363,7 @@ if page == "Главная":
     with col1:
         st.metric("💰 Стоимость", f"{metrics['total_value']:,.0f} ₽", f"{metrics['total_pnl']:+,.0f} ₽")
     with col2:
-        st.metric(" Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
+        st.metric("📈 Доходность", f"{metrics['total_pnl_pct']:+.2f}%", "vs покупка")
     with col3:
         st.metric("📊 Средний % годовых", f"{metrics['avg_annual_return']:.2f}%", "взвешенный")
     with col4:
@@ -425,7 +416,7 @@ if page == "Главная":
         - К 2031 будет: **~10 000 000 ₽** ✅
         """)
     
-    st.caption(f" Купонный доход: {monthly_coupon_income:,.0f} ₽/мес | {metrics['annual_coupon']:,.0f} ₽/год")
+    st.caption(f"💡 Купонный доход: {monthly_coupon_income:,.0f} ₽/мес | {metrics['annual_coupon']:,.0f} ₽/год")
     
     st.markdown("---")
     st.subheader("Текущие позиции")
@@ -462,74 +453,218 @@ if page == "Главная":
     with col3:
         st.metric("Купон в день", f"{metrics['annual_coupon']/365:,.0f} ₽")
 
-
-# ==================== ПОЗИЦИИ ====================
+# ==================== ПОЗИЦИИ (КАРТОЧКИ) ====================
 
 elif page == "Позиции":
     st.title("💼 Управление позициями")
-    st.subheader("Текущие позиции")
-    df_display = metrics['details'][['short_name', 'ticker', 'qty', 'buy_price', 'current_price', 'market_value', 'pnl']].copy()
-    df_display.columns = ['Облигация', 'Тикер', 'Кол-во', 'Покупка %', 'Сейчас %', 'Стоимость ₽', 'P&L ₽']
-    st.dataframe(df_display, use_container_width=True)
+    
+    # Список всех ОФЗ на Мосбирже
+    ALL_OFZ = [
+        {'ticker': 'SU26238RMFS4', 'name': 'ОФЗ 26238', 'coupon': 7.1, 'maturity': '2041'},
+        {'ticker': 'SU26243RMFS9', 'name': 'ОФЗ 26243', 'coupon': 8.0, 'maturity': '2028'},
+        {'ticker': 'SU26244RMFS7', 'name': 'ОФЗ 26244', 'coupon': 8.0, 'maturity': '2030'},
+        {'ticker': 'SU26245RMFS4', 'name': 'ОФЗ 26245', 'coupon': 8.0, 'maturity': '2031'},
+        {'ticker': 'SU26246RMFS7', 'name': 'ОФЗ 26246', 'coupon': 12.0, 'maturity': '2034'},
+        {'ticker': 'SU26247RMFS5', 'name': 'ОФЗ 26247', 'coupon': 12.25, 'maturity': '2034'},
+        {'ticker': 'SU26248RMFS3', 'name': 'ОФЗ 26248', 'coupon': 12.25, 'maturity': '2035'},
+        {'ticker': 'SU26249RMFS1', 'name': 'ОФЗ 26249', 'coupon': 12.0, 'maturity': '2036'},
+        {'ticker': 'SU26250RMFS9', 'name': 'ОФЗ 26250', 'coupon': 12.0, 'maturity': '2037'},
+        {'ticker': 'SU26251RMFS7', 'name': 'ОФЗ 26251', 'coupon': 12.0, 'maturity': '2038'},
+        {'ticker': 'SU26252RMFS5', 'name': 'ОФЗ 26252', 'coupon': 12.0, 'maturity': '2039'},
+        {'ticker': 'SU26253RMFS3', 'name': 'ОФЗ 26253', 'coupon': 12.0, 'maturity': '2040'},
+        {'ticker': 'SU26254RMFS1', 'name': 'ОФЗ 26254', 'coupon': 13.0, 'maturity': '2036'},
+        {'ticker': 'SU26255RMFS8', 'name': 'ОФЗ 26255', 'coupon': 13.0, 'maturity': '2037'},
+        {'ticker': 'SU26256RMFS6', 'name': 'ОФЗ 26256', 'coupon': 13.0, 'maturity': '2038'},
+        {'ticker': 'SU26257RMFS4', 'name': 'ОФЗ 26257', 'coupon': 13.0, 'maturity': '2039'},
+        {'ticker': 'SU26258RMFS2', 'name': 'ОФЗ 26258', 'coupon': 13.0, 'maturity': '2040'},
+        {'ticker': 'SU26259RMFS0', 'name': 'ОФЗ 26259', 'coupon': 13.0, 'maturity': '2041'},
+        {'ticker': 'SU26260RMFS5', 'name': 'ОФЗ 26260', 'coupon': 13.0, 'maturity': '2042'},
+        {'ticker': 'SU26261RMFS3', 'name': 'ОФЗ 26261', 'coupon': 13.0, 'maturity': '2043'},
+        {'ticker': 'SU26262RMFS1', 'name': 'ОФЗ 26262', 'coupon': 13.0, 'maturity': '2044'},
+        {'ticker': 'SU26263RMFS9', 'name': 'ОФЗ 26263', 'coupon': 13.0, 'maturity': '2045'},
+        {'ticker': 'SU26264RMFS7', 'name': 'ОФЗ 26264', 'coupon': 13.0, 'maturity': '2046'},
+        {'ticker': 'SU26265RMFS4', 'name': 'ОФЗ 26265', 'coupon': 13.0, 'maturity': '2047'},
+    ]
+    
+    # Флоатеры (ОФЗ-ПК с переменным купоном)
+    FLOATERS = [
+        {'ticker': 'SU29014RMFS4', 'name': 'ОФЗ 29014', 'coupon': 'RUONIA', 'maturity': '2028'},
+        {'ticker': 'SU29015RMFS1', 'name': 'ОФЗ 29015', 'coupon': 'RUONIA', 'maturity': '2029'},
+        {'ticker': 'SU29016RMFS9', 'name': 'ОФЗ 29016', 'coupon': 'RUONIA', 'maturity': '2030'},
+        {'ticker': 'SU29017RMFS7', 'name': 'ОФЗ 29017', 'coupon': 'RUONIA', 'maturity': '2031'},
+        {'ticker': 'SU29018RMFS5', 'name': 'ОФЗ 29018', 'coupon': 'RUONIA', 'maturity': '2032'},
+        {'ticker': 'SU29019RMFS3', 'name': 'ОФЗ 29019', 'coupon': 'RUONIA', 'maturity': '2033'},
+        {'ticker': 'SU29020RMFS8', 'name': 'ОФЗ 29020', 'coupon': 'RUONIA', 'maturity': '2034'},
+        {'ticker': 'SU29021RMFS6', 'name': 'ОФЗ 29021', 'coupon': 'RUONIA', 'maturity': '2035'},
+        {'ticker': 'SU29022RMFS4', 'name': 'ОФЗ 29022', 'coupon': 'RUONIA', 'maturity': '2036'},
+        {'ticker': 'SU29023RMFS2', 'name': 'ОФЗ 29023', 'coupon': 'RUONIA', 'maturity': '2037'},
+        {'ticker': 'SU29024RMFS0', 'name': 'ОФЗ 29024', 'coupon': 'RUONIA', 'maturity': '2038'},
+        {'ticker': 'SU29025RMFS7', 'name': 'ОФЗ 29025', 'coupon': 'RUONIA', 'maturity': '2039'},
+    ]
+    
+    # Получаем текущие цены для всех ОФЗ
+    all_tickers = [ofz['ticker'] for ofz in ALL_OFZ + FLOATERS]
+    all_prices = get_moex_prices(all_tickers)
+    
+    # ==================== ТЕКУЩИЙ ПОРТФЕЛЬ ====================
+    
+    st.subheader("📊 Ваш портфель")
+    
+    if len(st.session_state.positions) > 0:
+        df_display = metrics['details'][['short_name', 'ticker', 'qty', 'buy_price', 'current_price', 'market_value', 'pnl']].copy()
+        df_display.columns = ['Облигация', 'Тикер', 'Кол-во', 'Покупка %', 'Сейчас %', 'Стоимость ₽', 'P&L ₽']
+        st.dataframe(df_display, use_container_width=True)
+    else:
+        st.info("Портфель пуст. Добавьте облигации ниже ️")
     
     st.markdown("---")
-    st.subheader("Редактирование позиции")
-    position_options = [f"{pos['short_name']} ({pos['qty']} шт)" for pos in st.session_state.positions]
-    selected = st.selectbox("Выберите:", position_options)
     
-    if selected:
-        idx = position_options.index(selected)
-        pos = st.session_state.positions[idx]
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            new_qty = st.number_input("Количество", value=int(pos['qty']), key=f"qty_{idx}")
-            new_ticker = st.text_input("Тикер", value=pos['ticker'], key=f"ticker_{idx}")
-            new_name = st.text_input("Название", value=pos['short_name'], key=f"name_{idx}")
-        with col2:
-            new_buy = st.number_input("Цена покупки %", value=float(pos['buy_price']), step=0.1, key=f"buy_{idx}")
-            new_coupon = st.number_input("Купон %", value=float(pos['coupon_rate']*100), step=0.1, key=f"coupon_{idx}")
-            new_dur = st.number_input("Дюрация", value=float(pos['duration']), step=0.1, key=f"dur_{idx}")
-        with col3:
-            new_mat = st.number_input("Лет до погашения", value=int(pos.get('maturity_years', 5)), key=f"mat_{idx}")
+    # ==================== ДОБАВИТЬ ОФЗ С ФИКСИРОВАННЫМ КУПОНОМ ====================
+    
+    st.subheader("📋 ОФЗ с фиксированным купоном")
+    
+    # Фильтр
+    search_fixed = st.text_input(" Поиск ОФЗ...", key="search_fixed")
+    
+    # Сетка карточек 3 в ряд
+    cols = st.columns(3)
+    
+    for i, ofz in enumerate(ALL_OFZ):
+        if search_fixed and search_fixed.lower() not in ofz['name'].lower():
+            continue
         
-        if st.button(" Сохранить"):
-            st.session_state.positions[idx] = {
-                'ticker': new_ticker, 'short_name': new_name, 'qty': int(new_qty),
-                'buy_price': float(new_buy), 'coupon_rate': float(new_coupon)/100,
-                'duration': float(new_dur), 'maturity_years': int(new_mat),
-                'current_price': pos['current_price']
-            }
-            st.success("✅ Сохранено! Не забудьте сохранить в облако в сайдбаре")
-            st.rerun()
-        
-        if st.button("️ Удалить"):
-            st.session_state.positions.pop(idx)
-            st.success("✅ Удалено!")
-            st.rerun()
+        col = cols[i % 3]
+        with col:
+            # Получаем текущую цену
+            current_price = all_prices.get(ofz['ticker'])
+            price_display = f"{current_price:.2f}%" if current_price else "Нет данных"
+            
+            # Проверяем есть ли в портфеле
+            in_portfolio = None
+            for pos in st.session_state.positions:
+                if pos['ticker'] == ofz['ticker']:
+                    in_portfolio = pos
+                    break
+            
+            # Карточка
+            st.markdown(f"""
+            <div style='background-color: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 15px; margin: 5px 0;'>
+                <h4 style='margin: 0; color: #000000;'>{ofz['name']}</h4>
+                <p style='margin: 5px 0; color: #666666; font-size: 14px;'>Купон: {ofz['coupon']}% | Погашение: {ofz['maturity']}</p>
+                <p style='margin: 5px 0; color: #4a90e2; font-weight: bold; font-size: 18px;'>💰 {price_display}</p>
+            """, unsafe_allow_html=True)
+            
+            if in_portfolio:
+                st.markdown(f"<p style='margin: 5px 0; color: #00c853;'>✅ В портфеле: {in_portfolio['qty']} шт</p>", unsafe_allow_html=True)
+                add_qty = st.number_input("Добавить кол-во", min_value=0, value=0, step=1, key=f"add_qty_{ofz['ticker']}", label_visibility="collapsed")
+                if st.button(f"➕ Добавить", key=f"btn_add_{ofz['ticker']}"):
+                    if add_qty > 0 and current_price:
+                        # Добавляем к существующей позиции (средняя цена)
+                        total_qty = in_portfolio['qty'] + add_qty
+                        total_cost = (in_portfolio['buy_price'] * in_portfolio['qty']) + (current_price * add_qty)
+                        avg_price = total_cost / total_qty
+                        
+                        in_portfolio['qty'] = total_qty
+                        in_portfolio['buy_price'] = avg_price
+                        in_portfolio['current_price'] = current_price
+                        
+                        st.success(f"✅ Добавлено {add_qty} шт по {current_price:.2f}%")
+                        st.rerun()
+            else:
+                add_qty = st.number_input("Количество", min_value=1, value=10, step=1, key=f"new_qty_{ofz['ticker']}", label_visibility="collapsed")
+                if st.button(f"🛒 Купить", key=f"btn_buy_{ofz['ticker']}"):
+                    if current_price:
+                        st.session_state.positions.append({
+                            'ticker': ofz['ticker'],
+                            'short_name': ofz['name'],
+                            'qty': int(add_qty),
+                            'buy_price': float(current_price),
+                            'coupon_rate': ofz['coupon'] / 100,
+                            'duration': 5.0,
+                            'maturity_years': int(ofz['maturity']) - 2026 if ofz['maturity'].isdigit() else 5,
+                            'current_price': float(current_price)
+                        })
+                        st.success(f"✅ Куплено {add_qty} шт по {current_price:.2f}%")
+                        st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")
-    st.subheader("Добавить позицию")
-    col1, col2 = st.columns(2)
-    with col1:
-        add_ticker = st.text_input("Тикер", key="add_t")
-        add_name = st.text_input("Название", key="add_n")
-        add_qty = st.number_input("Кол-во", value=10, key="add_q")
-    with col2:
-        add_buy = st.number_input("Цена %", value=90.0, key="add_b")
-        add_coupon = st.number_input("Купон %", value=10.0, key="add_c")
-        add_dur = st.number_input("Дюрация", value=5.0, key="add_d")
-        add_mat = st.number_input("Лет до погашения", value=5, key="add_m")
     
-    if st.button("➕ Добавить"):
-        if add_ticker and add_name:
-            st.session_state.positions.append({
-                'ticker': add_ticker, 'short_name': add_name, 'qty': int(add_qty),
-                'buy_price': float(add_buy), 'coupon_rate': float(add_coupon)/100,
-                'duration': float(add_dur), 'maturity_years': int(add_mat),
-                'current_price': float(add_buy)
-            })
-            st.success("✅ Добавлено! Не забудьте сохранить в облако")
-            st.rerun()
+    # ==================== ФЛОАТЕРЫ ====================
+    
+    st.subheader("💧 Флоатеры (ОФЗ-ПК)")
+    
+    search_float = st.text_input("🔍 Поиск флоатеров...", key="search_float")
+    
+    cols = st.columns(3)
+    
+    for i, ofz in enumerate(FLOATERS):
+        if search_float and search_float.lower() not in ofz['name'].lower():
+            continue
+        
+        col = cols[i % 3]
+        with col:
+            current_price = all_prices.get(ofz['ticker'])
+            price_display = f"{current_price:.2f}%" if current_price else "Нет данных"
+            
+            in_portfolio = None
+            for pos in st.session_state.positions:
+                if pos['ticker'] == ofz['ticker']:
+                    in_portfolio = pos
+                    break
+            
+            st.markdown(f"""
+            <div style='background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 10px; padding: 15px; margin: 5px 0;'>
+                <h4 style='margin: 0; color: #000000;'>{ofz['name']}</h4>
+                <p style='margin: 5px 0; color: #666666; font-size: 14px;'>Купон: {ofz['coupon']} | Погашение: {ofz['maturity']}</p>
+                <p style='margin: 5px 0; color: #1976d2; font-weight: bold; font-size: 18px;'>💰 {price_display}</p>
+            """, unsafe_allow_html=True)
+            
+            if in_portfolio:
+                st.markdown(f"<p style='margin: 5px 0; color: #00c853;'>✅ В портфеле: {in_portfolio['qty']} шт</p>", unsafe_allow_html=True)
+                add_qty = st.number_input("Добавить", min_value=0, value=0, step=1, key=f"add_qty_float_{ofz['ticker']}", label_visibility="collapsed")
+                if st.button(f"➕ Добавить", key=f"btn_add_float_{ofz['ticker']}"):
+                    if add_qty > 0 and current_price:
+                        total_qty = in_portfolio['qty'] + add_qty
+                        total_cost = (in_portfolio['buy_price'] * in_portfolio['qty']) + (current_price * add_qty)
+                        avg_price = total_cost / total_qty
+                        
+                        in_portfolio['qty'] = total_qty
+                        in_portfolio['buy_price'] = avg_price
+                        in_portfolio['current_price'] = current_price
+                        
+                        st.success(f"✅ Добавлено {add_qty} шт по {current_price:.2f}%")
+                        st.rerun()
+            else:
+                add_qty = st.number_input("Количество", min_value=1, value=10, step=1, key=f"new_qty_float_{ofz['ticker']}", label_visibility="collapsed")
+                if st.button(f"🛒 Купить", key=f"btn_buy_float_{ofz['ticker']}"):
+                    if current_price:
+                        st.session_state.positions.append({
+                            'ticker': ofz['ticker'],
+                            'short_name': ofz['name'],
+                            'qty': int(add_qty),
+                            'buy_price': float(current_price),
+                            'coupon_rate': 0.10,
+                            'duration': 0.5,
+                            'maturity_years': int(ofz['maturity']) - 2026 if ofz['maturity'].isdigit() else 5,
+                            'current_price': float(current_price)
+                        })
+                        st.success(f"✅ Куплено {add_qty} шт по {current_price:.2f}%")
+                        st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Кнопка сохранения в облако
+    if CLOUD_ENABLED:
+        if st.button("💾 Сохранить портфель в облако", type="primary", use_container_width=True):
+            if save_to_cloud(st.session_state.positions):
+                st.success("✅ Сохранено!")
+                st.balloons()
+            else:
+                st.error("❌ Ошибка сохранения")
 
 # ==================== КУПОННЫЙ КАЛЕНДАРЬ ====================
 
@@ -637,7 +772,7 @@ elif page == "Купонный календарь":
             st.markdown(f"""
             <div class='coupon-upcoming'>
                 <h4>{c['short_name']} — {c['date'].strftime('%d.%m.%Y')}</h4>
-                <p>💵 {c['amount']:,.2f} ₽ |  Через {days} дн.</p>
+                <p>💵 {c['amount']:,.2f} ₽ | ⏰ Через {days} дн.</p>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -680,7 +815,7 @@ elif page == "Стресс-тесты":
 # ==================== ПРОГНОЗ ЦЕЛИ ====================
 
 elif page == "Прогноз цели":
-    st.title(" Прогноз цели")
+    st.title("🎯 Прогноз цели")
     target = st.number_input("Цель ₽", value=10_000_000, step=100_000)
     monthly = st.number_input("Вложения в месяц ₽", value=100_000, step=10_000)
     
@@ -802,7 +937,7 @@ elif page == "Импорт из брокера":
             st.error(f"❌ Ошибка: {e}")
     
     st.markdown("---")
-    st.subheader("📝 Ручное обновление цен покупки")
+    st.subheader(" Ручное обновление цен покупки")
     
     for i, pos in enumerate(st.session_state.positions):
         col1, col2 = st.columns([3, 1])
@@ -818,7 +953,7 @@ elif page == "Импорт из брокера":
 # ==================== ДОСТИЖЕНИЯ ====================
 
 elif page == "Достижения":
-    st.title("🎮 Достижения")
+    st.title(" Достижения")
     level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
     stars_count, star_icon = get_star_level(metrics['annual_coupon'])
     
