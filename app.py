@@ -300,6 +300,9 @@ with st.sidebar:
 # ==================== ГЛАВНАЯ ====================
 
 if page == "Главная":
+    # Пересчитываем метрики чтобы были актуальные
+    metrics = calculate_metrics(st.session_state.positions)
+    
     st.title("💼 Обзор портфеля")
     level_name, level_css, next_level, level_msg = get_investor_level(metrics['total_value'])
     stars_count, star_icon = get_star_level(metrics['annual_coupon'])
@@ -455,89 +458,55 @@ if page == "Главная":
 
 # ==================== ПОЗИЦИИ (КАРТОЧКИ) ====================
 
+# ==================== ПОЗИЦИИ (БЫСТРЫЕ) ====================
+
 elif page == "Позиции":
-    st.title("💼 Управление позициями")
+    st.title(" Управление позициями")
     
-    # Список всех ОФЗ на Мосбирже
-    ALL_OFZ = [
-        {'ticker': 'SU26238RMFS4', 'name': 'ОФЗ 26238', 'coupon': 7.1, 'maturity': '2041'},
-        {'ticker': 'SU26243RMFS9', 'name': 'ОФЗ 26243', 'coupon': 8.0, 'maturity': '2028'},
-        {'ticker': 'SU26244RMFS7', 'name': 'ОФЗ 26244', 'coupon': 8.0, 'maturity': '2030'},
-        {'ticker': 'SU26245RMFS4', 'name': 'ОФЗ 26245', 'coupon': 8.0, 'maturity': '2031'},
-        {'ticker': 'SU26246RMFS7', 'name': 'ОФЗ 26246', 'coupon': 12.0, 'maturity': '2034'},
-        {'ticker': 'SU26247RMFS5', 'name': 'ОФЗ 26247', 'coupon': 12.25, 'maturity': '2034'},
-        {'ticker': 'SU26248RMFS3', 'name': 'ОФЗ 26248', 'coupon': 12.25, 'maturity': '2035'},
-        {'ticker': 'SU26249RMFS1', 'name': 'ОФЗ 26249', 'coupon': 12.0, 'maturity': '2036'},
-        {'ticker': 'SU26250RMFS9', 'name': 'ОФЗ 26250', 'coupon': 12.0, 'maturity': '2037'},
-        {'ticker': 'SU26251RMFS7', 'name': 'ОФЗ 26251', 'coupon': 12.0, 'maturity': '2038'},
-        {'ticker': 'SU26252RMFS5', 'name': 'ОФЗ 26252', 'coupon': 12.0, 'maturity': '2039'},
-        {'ticker': 'SU26253RMFS3', 'name': 'ОФЗ 26253', 'coupon': 12.0, 'maturity': '2040'},
-        {'ticker': 'SU26254RMFS1', 'name': 'ОФЗ 26254', 'coupon': 13.0, 'maturity': '2036'},
-        {'ticker': 'SU26255RMFS8', 'name': 'ОФЗ 26255', 'coupon': 13.0, 'maturity': '2037'},
-        {'ticker': 'SU26256RMFS6', 'name': 'ОФЗ 26256', 'coupon': 13.0, 'maturity': '2038'},
-        {'ticker': 'SU26257RMFS4', 'name': 'ОФЗ 26257', 'coupon': 13.0, 'maturity': '2039'},
-        {'ticker': 'SU26258RMFS2', 'name': 'ОФЗ 26258', 'coupon': 13.0, 'maturity': '2040'},
-        {'ticker': 'SU26259RMFS0', 'name': 'ОФЗ 26259', 'coupon': 13.0, 'maturity': '2041'},
-        {'ticker': 'SU26260RMFS5', 'name': 'ОФЗ 26260', 'coupon': 13.0, 'maturity': '2042'},
-        {'ticker': 'SU26261RMFS3', 'name': 'ОФЗ 26261', 'coupon': 13.0, 'maturity': '2043'},
-        {'ticker': 'SU26262RMFS1', 'name': 'ОФЗ 26262', 'coupon': 13.0, 'maturity': '2044'},
-        {'ticker': 'SU26263RMFS9', 'name': 'ОФЗ 26263', 'coupon': 13.0, 'maturity': '2045'},
-        {'ticker': 'SU26264RMFS7', 'name': 'ОФЗ 26264', 'coupon': 13.0, 'maturity': '2046'},
-        {'ticker': 'SU26265RMFS4', 'name': 'ОФЗ 26265', 'coupon': 13.0, 'maturity': '2047'},
-    ]
-    
-    # Флоатеры (ОФЗ-ПК с переменным купоном)
-    FLOATERS = [
-        {'ticker': 'SU29014RMFS4', 'name': 'ОФЗ 29014', 'coupon': 'RUONIA', 'maturity': '2028'},
-        {'ticker': 'SU29015RMFS1', 'name': 'ОФЗ 29015', 'coupon': 'RUONIA', 'maturity': '2029'},
-        {'ticker': 'SU29016RMFS9', 'name': 'ОФЗ 29016', 'coupon': 'RUONIA', 'maturity': '2030'},
-        {'ticker': 'SU29017RMFS7', 'name': 'ОФЗ 29017', 'coupon': 'RUONIA', 'maturity': '2031'},
-        {'ticker': 'SU29018RMFS5', 'name': 'ОФЗ 29018', 'coupon': 'RUONIA', 'maturity': '2032'},
-        {'ticker': 'SU29019RMFS3', 'name': 'ОФЗ 29019', 'coupon': 'RUONIA', 'maturity': '2033'},
-        {'ticker': 'SU29020RMFS8', 'name': 'ОФЗ 29020', 'coupon': 'RUONIA', 'maturity': '2034'},
-        {'ticker': 'SU29021RMFS6', 'name': 'ОФЗ 29021', 'coupon': 'RUONIA', 'maturity': '2035'},
-        {'ticker': 'SU29022RMFS4', 'name': 'ОФЗ 29022', 'coupon': 'RUONIA', 'maturity': '2036'},
-        {'ticker': 'SU29023RMFS2', 'name': 'ОФЗ 29023', 'coupon': 'RUONIA', 'maturity': '2037'},
-        {'ticker': 'SU29024RMFS0', 'name': 'ОФЗ 29024', 'coupon': 'RUONIA', 'maturity': '2038'},
-        {'ticker': 'SU29025RMFS7', 'name': 'ОФЗ 29025', 'coupon': 'RUONIA', 'maturity': '2039'},
-    ]
-    
-    # Получаем текущие цены для всех ОФЗ
-    all_tickers = [ofz['ticker'] for ofz in ALL_OFZ + FLOATERS]
-    all_prices = get_moex_prices(all_tickers)
-    
-    # ==================== ТЕКУЩИЙ ПОРТФЕЛЬ ====================
-    
+    # Показываем текущий портфель
     st.subheader("📊 Ваш портфель")
     
     if len(st.session_state.positions) > 0:
+        # Пересчитываем метрики
+        metrics = calculate_metrics(st.session_state.positions)
+        
         df_display = metrics['details'][['short_name', 'ticker', 'qty', 'buy_price', 'current_price', 'market_value', 'pnl']].copy()
         df_display.columns = ['Облигация', 'Тикер', 'Кол-во', 'Покупка %', 'Сейчас %', 'Стоимость ₽', 'P&L ₽']
         st.dataframe(df_display, use_container_width=True)
+        
+        st.markdown(f"**Всего позиций:** {len(st.session_state.positions)} | **Общая стоимость:** {metrics['total_value']:,.0f} ₽")
     else:
-        st.info("Портфель пуст. Добавьте облигации ниже ️")
+        st.info("Портфель пуст. Добавьте облигации ниже ⬇️")
     
     st.markdown("---")
     
-    # ==================== ДОБАВИТЬ ОФЗ С ФИКСИРОВАННЫМ КУПОНОМ ====================
+    # ==================== БЫСТРОЕ ДОБАВЛЕНИЕ ====================
     
-    st.subheader("📋 ОФЗ с фиксированным купоном")
+    st.subheader("⚡ Быстрое добавление ОФЗ")
     
-    # Фильтр
-    search_fixed = st.text_input(" Поиск ОФЗ...", key="search_fixed")
+    # Простой список популярных ОФЗ
+    POPULAR_OFZ = [
+        {'ticker': 'SU26238RMFS4', 'name': 'ОФЗ 26238', 'coupon': 7.1},
+        {'ticker': 'SU26246RMFS7', 'name': 'ОФЗ 26246', 'coupon': 12.0},
+        {'ticker': 'SU26247RMFS5', 'name': 'ОФЗ 26247', 'coupon': 12.25},
+        {'ticker': 'SU26248RMFS3', 'name': 'ОФЗ 26248', 'coupon': 12.25},
+        {'ticker': 'SU26254RMFS1', 'name': 'ОФЗ 26254', 'coupon': 13.0},
+        {'ticker': 'SU26255RMFS8', 'name': 'ОФЗ 26255', 'coupon': 13.0},
+        {'ticker': 'SU26256RMFS6', 'name': 'ОФЗ 26256', 'coupon': 13.0},
+        {'ticker': 'SU29014RMFS4', 'name': 'ОФЗ 29014 (флоатер)', 'coupon': 'RUONIA'},
+        {'ticker': 'SU29015RMFS1', 'name': 'ОФЗ 29015 (флоатер)', 'coupon': 'RUONIA'},
+    ]
     
-    # Сетка карточек 3 в ряд
-    cols = st.columns(3)
+    # Получаем цены только для популярных ОФЗ
+    popular_tickers = [ofz['ticker'] for ofz in POPULAR_OFZ]
+    popular_prices = get_moex_prices(popular_tickers)
     
-    for i, ofz in enumerate(ALL_OFZ):
-        if search_fixed and search_fixed.lower() not in ofz['name'].lower():
-            continue
-        
-        col = cols[i % 3]
+    col1, col2 = st.columns(2)
+    
+    for i, ofz in enumerate(POPULAR_OFZ):
+        col = col1 if i % 2 == 0 else col2
         with col:
-            # Получаем текущую цену
-            current_price = all_prices.get(ofz['ticker'])
-            price_display = f"{current_price:.2f}%" if current_price else "Нет данных"
+            current_price = popular_prices.get(ofz['ticker'])
             
             # Проверяем есть ли в портфеле
             in_portfolio = None
@@ -546,118 +515,84 @@ elif page == "Позиции":
                     in_portfolio = pos
                     break
             
-            # Карточка
-            st.markdown(f"""
-            <div style='background-color: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 15px; margin: 5px 0;'>
-                <h4 style='margin: 0; color: #000000;'>{ofz['name']}</h4>
-                <p style='margin: 5px 0; color: #666666; font-size: 14px;'>Купон: {ofz['coupon']}% | Погашение: {ofz['maturity']}</p>
-                <p style='margin: 5px 0; color: #4a90e2; font-weight: bold; font-size: 18px;'>💰 {price_display}</p>
-            """, unsafe_allow_html=True)
-            
-            if in_portfolio:
-                st.markdown(f"<p style='margin: 5px 0; color: #00c853;'>✅ В портфеле: {in_portfolio['qty']} шт</p>", unsafe_allow_html=True)
-                add_qty = st.number_input("Добавить кол-во", min_value=0, value=0, step=1, key=f"add_qty_{ofz['ticker']}", label_visibility="collapsed")
-                if st.button(f"➕ Добавить", key=f"btn_add_{ofz['ticker']}"):
-                    if add_qty > 0 and current_price:
-                        # Добавляем к существующей позиции (средняя цена)
-                        total_qty = in_portfolio['qty'] + add_qty
-                        total_cost = (in_portfolio['buy_price'] * in_portfolio['qty']) + (current_price * add_qty)
-                        avg_price = total_cost / total_qty
-                        
-                        in_portfolio['qty'] = total_qty
-                        in_portfolio['buy_price'] = avg_price
-                        in_portfolio['current_price'] = current_price
-                        
-                        st.success(f"✅ Добавлено {add_qty} шт по {current_price:.2f}%")
-                        st.rerun()
-            else:
-                add_qty = st.number_input("Количество", min_value=1, value=10, step=1, key=f"new_qty_{ofz['ticker']}", label_visibility="collapsed")
-                if st.button(f"🛒 Купить", key=f"btn_buy_{ofz['ticker']}"):
-                    if current_price:
-                        st.session_state.positions.append({
-                            'ticker': ofz['ticker'],
-                            'short_name': ofz['name'],
-                            'qty': int(add_qty),
-                            'buy_price': float(current_price),
-                            'coupon_rate': ofz['coupon'] / 100,
-                            'duration': 5.0,
-                            'maturity_years': int(ofz['maturity']) - 2026 if ofz['maturity'].isdigit() else 5,
-                            'current_price': float(current_price)
-                        })
-                        st.success(f"✅ Куплено {add_qty} шт по {current_price:.2f}%")
-                        st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container():
+                st.markdown(f"**{ofz['name']}**")
+                if current_price:
+                    st.markdown(f"💰 **{current_price:.2f}%**")
+                else:
+                    st.markdown("💰 Нет данных")
+                
+                if in_portfolio:
+                    st.markdown(f"✅ В портфеле: {in_portfolio['qty']} шт")
+                    add_qty = st.number_input("Добавить", min_value=0, value=0, step=10, key=f"add_{ofz['ticker']}", label_visibility="collapsed")
+                    if st.button(f"➕ Добавить", key=f"btn_{ofz['ticker']}"):
+                        if add_qty > 0 and current_price:
+                            total_qty = in_portfolio['qty'] + add_qty
+                            total_cost = (in_portfolio['buy_price'] * in_portfolio['qty']) + (current_price * add_qty)
+                            avg_price = total_cost / total_qty
+                            
+                            in_portfolio['qty'] = total_qty
+                            in_portfolio['buy_price'] = avg_price
+                            in_portfolio['current_price'] = current_price
+                            
+                            st.success(f"✅ Добавлено {add_qty} шт")
+                            st.rerun()
+                else:
+                    buy_qty = st.number_input("Количество", min_value=1, value=10, step=10, key=f"buy_{ofz['ticker']}", label_visibility="collapsed")
+                    if st.button(f" Купить", key=f"buy_btn_{ofz['ticker']}"):
+                        if current_price:
+                            st.session_state.positions.append({
+                                'ticker': ofz['ticker'],
+                                'short_name': ofz['name'],
+                                'qty': int(buy_qty),
+                                'buy_price': float(current_price),
+                                'coupon_rate': ofz['coupon'] / 100 if isinstance(ofz['coupon'], (int, float)) else 0.10,
+                                'duration': 0.5 if 'флоатер' in ofz['name'] else 5.0,
+                                'maturity_years': 5,
+                                'current_price': float(current_price)
+                            })
+                            st.success(f"✅ Куплено {buy_qty} шт")
+                            st.rerun()
+                
+                st.markdown("---")
     
     st.markdown("---")
     
-    # ==================== ФЛОАТЕРЫ ====================
+    # ==================== ДОБАВИТЬ ДРУГУЮ ОФЗ ====================
     
-    st.subheader("💧 Флоатеры (ОФЗ-ПК)")
+    st.subheader("🔍 Добавить другую ОФЗ")
     
-    search_float = st.text_input("🔍 Поиск флоатеров...", key="search_float")
+    custom_ticker = st.text_input("Введите тикер (например, SU26260RMFS5)")
+    custom_name = st.text_input("Название (например, ОФЗ 26260)")
     
-    cols = st.columns(3)
-    
-    for i, ofz in enumerate(FLOATERS):
-        if search_float and search_float.lower() not in ofz['name'].lower():
-            continue
+    if custom_ticker and custom_name:
+        # Получаем цену для конкретной ОФЗ
+        custom_price = get_moex_prices([custom_ticker]).get(custom_ticker)
         
-        col = cols[i % 3]
-        with col:
-            current_price = all_prices.get(ofz['ticker'])
-            price_display = f"{current_price:.2f}%" if current_price else "Нет данных"
+        if custom_price:
+            st.markdown(f"**Текущая цена:** {custom_price:.2f}%")
             
-            in_portfolio = None
-            for pos in st.session_state.positions:
-                if pos['ticker'] == ofz['ticker']:
-                    in_portfolio = pos
-                    break
+            custom_qty = st.number_input("Количество", min_value=1, value=10, key="custom_qty")
             
-            st.markdown(f"""
-            <div style='background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 10px; padding: 15px; margin: 5px 0;'>
-                <h4 style='margin: 0; color: #000000;'>{ofz['name']}</h4>
-                <p style='margin: 5px 0; color: #666666; font-size: 14px;'>Купон: {ofz['coupon']} | Погашение: {ofz['maturity']}</p>
-                <p style='margin: 5px 0; color: #1976d2; font-weight: bold; font-size: 18px;'>💰 {price_display}</p>
-            """, unsafe_allow_html=True)
-            
-            if in_portfolio:
-                st.markdown(f"<p style='margin: 5px 0; color: #00c853;'>✅ В портфеле: {in_portfolio['qty']} шт</p>", unsafe_allow_html=True)
-                add_qty = st.number_input("Добавить", min_value=0, value=0, step=1, key=f"add_qty_float_{ofz['ticker']}", label_visibility="collapsed")
-                if st.button(f"➕ Добавить", key=f"btn_add_float_{ofz['ticker']}"):
-                    if add_qty > 0 and current_price:
-                        total_qty = in_portfolio['qty'] + add_qty
-                        total_cost = (in_portfolio['buy_price'] * in_portfolio['qty']) + (current_price * add_qty)
-                        avg_price = total_cost / total_qty
-                        
-                        in_portfolio['qty'] = total_qty
-                        in_portfolio['buy_price'] = avg_price
-                        in_portfolio['current_price'] = current_price
-                        
-                        st.success(f"✅ Добавлено {add_qty} шт по {current_price:.2f}%")
-                        st.rerun()
-            else:
-                add_qty = st.number_input("Количество", min_value=1, value=10, step=1, key=f"new_qty_float_{ofz['ticker']}", label_visibility="collapsed")
-                if st.button(f"🛒 Купить", key=f"btn_buy_float_{ofz['ticker']}"):
-                    if current_price:
-                        st.session_state.positions.append({
-                            'ticker': ofz['ticker'],
-                            'short_name': ofz['name'],
-                            'qty': int(add_qty),
-                            'buy_price': float(current_price),
-                            'coupon_rate': 0.10,
-                            'duration': 0.5,
-                            'maturity_years': int(ofz['maturity']) - 2026 if ofz['maturity'].isdigit() else 5,
-                            'current_price': float(current_price)
-                        })
-                        st.success(f"✅ Куплено {add_qty} шт по {current_price:.2f}%")
-                        st.rerun()
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+            if st.button(" Добавить ОФЗ"):
+                st.session_state.positions.append({
+                    'ticker': custom_ticker,
+                    'short_name': custom_name,
+                    'qty': int(custom_qty),
+                    'buy_price': float(custom_price),
+                    'coupon_rate': 0.10,
+                    'duration': 5.0,
+                    'maturity_years': 5,
+                    'current_price': float(custom_price)
+                })
+                st.success(f"✅ Добавлена {custom_name}")
+                st.rerun()
+        else:
+            st.error("❌ Не удалось получить цену. Проверьте тикер.")
     
     st.markdown("---")
     
-    # Кнопка сохранения в облако
+    # Кнопка сохранения
     if CLOUD_ENABLED:
         if st.button("💾 Сохранить портфель в облако", type="primary", use_container_width=True):
             if save_to_cloud(st.session_state.positions):
